@@ -47,3 +47,27 @@ Xcode는 iPhone, Apple Watch, iPad 안에 설치하는 앱이 아니라 Mac에 �
 - 서버가 최신 버전이면 기존처럼 관리자 토큰도 받아옵니다.
 - 로그인 화면에서 커서 옆 안내 문구는 라이트/다크모드 모두 흰색으로 표시됩니다.
 - 로그인 완료 후 커서 문구는 `반가워요/Welcome`이 남지 않고 홈의 `아래로 / 스크롤해 주세요` 또는 `please / scroll` 안내로 복귀합니다.
+
+
+## 2026-09-14 Glass mood sphere
+- The composition feedback uses a local Three.js r180 sphere with translucent colour membranes and studio reflections.
+- Existing whole-song and playback-window V-A-T colours feed the shader; energy controls flow speed and tension controls colour contrast. Palette changes interpolate smoothly.
+- `sphere-preview.html` offers sample palettes and light/dark backgrounds for visual review. These samples do not replace the actual analysis palette.
+- Three.js files and their MIT license are included in `vendor/`; no runtime CDN is needed for the sphere. Serve over HTTP with `npm start`.
+- The existing CSS visual remains available when WebGL is unavailable or its context is lost. Motion respects reduced-motion preferences and rendering pauses outside the viewport or in a hidden document.
+- Validation: `npm run check`; browser checks of sample palette switching, both backgrounds, and example-song playback with one canvas and no renderer errors.
+
+## 2026-09-14 Glass study 02
+- Replaced the painted surface shader with MeshPhysicalMaterial: real sphere geometry, transmission, IOR, thickness, dispersion, and an HDR studio environment.
+- Two closed, animated 3D lenses form the interior. A separate half-float render target supports nested glass refraction through the outer shell.
+- Added a subtle floating shadow, 30 fps rendering cap, theme-matched backdrop, and disposal for all added GPU resources. Existing analysis events and palette interpolation remain connected.
+
+
+## 2026-09-21 Orb studio 05
+- Replaced the previous volume renderer with a vanilla WebGL2 adaptation of SmoothUI Orb (Eduardo Calvo, MIT). The shader uses a sphere impostor, not a polygonal glass model.
+- Preserves the source's OkLab colour interpolation, flowing noise, fine grain, internal light and rim highlights. Extends the palette to 2–6 colours.
+- Adds independent contour amplitude, wave count, speed, irregularity and breathing controls. No floor shadow or outer glow.
+- Composition playback retains the existing palette/energy/tension event contract; palettes and motion values interpolate. The preview provides manual controls and four sample palettes, including an Aurora-inspired palette without a black colour stop.
+- Preview settings apply only to the preview; the composition view uses its existing V-A-T analysis.
+- Licensing: `vendor/SMOOTHUI-LICENSE.txt` contains the original copyright and MIT license; `THIRD_PARTY_NOTICES.md` records the source and modifications. Liquid Orb Editor was a visual reference; its code was not copied.
+- At the user's request, this revision was implemented without executing tests, syntax checks, browser inspection or screenshots.

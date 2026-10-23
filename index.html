@@ -19,9 +19,10 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@kfonts/line-seed-sans-kr@0.1.0/index.css" />
-  <link rel="stylesheet" href="style.css?v=20260910-soundi10-ui-19" />
+  <link rel="stylesheet" href="style.css?v=20260914-glass-sphere-1" />
+  <link rel="stylesheet" href="responsive.css?v=20261016-1" />
+  <link rel="stylesheet" href="lesson-layout.css?v=20261017-1" />
 </head>
 <body data-view="home">
   <div id="loginModal" class="login-modal" aria-hidden="false">
@@ -43,7 +44,7 @@
         </div>
       </div>
 <div class="login-screen-center">
-        <h1 id="loginTitle">soundi</h1>
+        <h1 id="loginTitle">SOUNDI</h1>
         <p class="login-description" data-i18n="loginDescription">Google 계정으로 간편하게 시작하세요.</p>
 
         <button id="googleLoginButton" class="google-login-button" type="button">
@@ -51,7 +52,7 @@
           <span data-i18n="continueGoogle">Google로 계속하기</span>
         </button>
 
-        <p id="loginMessage" class="login-message" aria-live="polite"></p><a href="privacy.html" target="_blank" rel="noopener" style="font-size:12px;color:inherit">개인정보처리방침 / Privacy</a>
+        <p id="loginMessage" class="login-message" aria-live="polite"></p>
       </div>
 
       <button id="adminLoginButton" class="admin-login-link" type="button" data-i18n="admin">관리자</button>
@@ -69,9 +70,11 @@
   <main class="app">
     <header class="site-header" aria-label="site header">
       <button class="wordmark nav-button is-active" type="button" data-view="home" aria-label="soundi home">
-        soundi
+        SOUNDI
       </button>
-      <nav class="nav" aria-label="primary navigation">
+      <button class="compact-page-title nav-button" type="button" data-view="home" aria-label="SOUNDI 홈으로 이동">SOUNDI</button>
+      <button id="mobileMenuToggle" class="mobile-menu-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="primaryNavigation"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 6h20 M2 12h20 M2 18h20" /></svg></button>
+      <nav id="primaryNavigation" class="nav" aria-label="primary navigation">
         <button class="nav-button" type="button" data-view="lesson" data-i18n="navLesson">Lesson</button>
         <button class="nav-button" type="button" data-view="compose" data-i18n="navCompose">Compose</button>
         <button class="nav-button" type="button" data-view="archive" data-i18n="navArchive">Archive</button>
@@ -81,13 +84,20 @@
             <span class="language-next">ENG</span>
           </span>
         </button>
+        <div class="compact-language-options" role="group" aria-label="Language">
+          <button type="button" data-language="ko" aria-pressed="true">한국어</button>
+          <button type="button" data-language="en" aria-pressed="false">English</button>
+        </div>
       </nav>
     </header>
 
     <section id="homeView" class="view home-view is-active" aria-label="home">
-      <div class="hero reveal">
-        <h1>See Music<br />Compose Visually</h1>
-        <span class="ko-label">음악을 보고 시각적으로 작곡해요.</span>
+      <div class="hero">
+        <div class="hero-orb-copy">
+          <h1>See Music<br />Compose Visually</h1>
+          <span class="ko-label">음악을 보고 시각적으로 작곡해요.</span>
+        </div>
+        <div id="homeMoodOrb" class="home-mood-orb" aria-hidden="true"></div>
       </div>
 
       <section class="tutorial" id="tutorial" aria-label="tutorial preview">
@@ -375,6 +385,7 @@
         </div>
 
         <aside class="analysis-panel" aria-label="my song mood">
+          <button id="mobileFeedbackClose" class="mobile-feedback-close" type="button" aria-label="피드백 닫기"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
           <div id="resizeHandle" class="resize-handle" role="separator" aria-orientation="vertical" aria-label="resize my song mood panel"></div>
           <div class="analysis-tabs" role="tablist" aria-label="feedback panels">
             <button class="analysis-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="visualFeedbackPanel" data-analysis-tab="visual" data-i18n="analysisVisualTab">내 곡의 분위기</button>
@@ -453,6 +464,14 @@
                 </div>
               </div>
               <button id="aiAnalyzeButton" class="ai-analyze-button" type="button" data-i18n="aiAnalyzeButton">분석하기</button>
+              <section id="aiThoughtLine" class="thought-line" hidden>
+                <button class="thought-header" type="button" aria-expanded="true" aria-controls="aiThoughtSteps">
+                  <span class="thought-glyph" aria-hidden="true">✧</span><span class="thought-title"></span>
+                  <span class="thought-timer" aria-hidden="true"></span><span class="thought-chevron" aria-hidden="true">⌄</span>
+                </button>
+                <div class="thought-body" id="aiThoughtSteps"><div><ol></ol></div></div>
+                <span class="thought-status" role="status" aria-live="polite"></span>
+              </section>
               <p id="aiFormMessage" class="ai-form-message" aria-live="polite"></p>
               <div id="aiCoachResult" class="ai-coach-result" aria-live="polite"></div>
             </section>
@@ -525,7 +544,7 @@
 
   <section id="dashboardModal" class="dashboard-modal" hidden aria-hidden="true">
     <div class="dashboard-page">
-      <button class="wordmark dashboard-brand" type="button" data-dashboard-close aria-label="soundi home">soundi</button>
+      <button class="wordmark dashboard-brand" type="button" data-dashboard-close aria-label="soundi home">SOUNDI</button>
 
       <div class="dashboard-main">
         <button id="dashboardCloseButton" class="dashboard-close-button" type="button" aria-label="Close dashboard">×</button>
@@ -574,7 +593,9 @@
                 <li data-i18n="nicknamePolicyArchive">변경하면 Archive의 기존 게시곡에도 새 닉네임이 반영돼요.</li>
                 <li data-i18n="nicknamePolicyReserved">관리자, admin, administrator, soundi는 닉네임으로 사용할 수 없어요.</li>
               </ul>
-              <p id="dashboardNicknameNextDate"></p><p><a href="privacy.html" target="_blank" rel="noopener">개인정보처리방침 / Privacy</a></p><button id="deleteAccountButton" type="button">계정 삭제 / Delete account</button><p id="deleteAccountStatus" role="status"></p>
+              <p id="dashboardNicknameNextDate"></p>
+              <button id="deleteAccountButton" type="button">계정 삭제 / Delete account</button>
+              <p id="deleteAccountStatus" role="status"></p>
             </div>
           </section>
         </section>
@@ -626,14 +647,31 @@
     </section>
   </div>
 
+  <nav class="mobile-bottom-nav" aria-label="주요 화면">
+    <button class="nav-button" type="button" data-view="lesson" data-i18n="navLesson">레슨</button>
+    <button class="nav-button" type="button" data-view="compose" data-i18n="navCompose">작곡</button>
+    <button class="nav-button" type="button" data-view="archive" data-i18n="navArchive">아카이브</button>
+  </nav>
+
   <div id="customCursor" class="custom-cursor" aria-hidden="true">
     <span class="cursor-dot"></span>
     <span class="cursor-hint">아래로<br />스크롤해 주세요</span>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
-  <script src="music-analysis.js?v=20260830-soundi-v9-1"></script>
-  <script src="script.js?v=20260910-soundi10-ui-19"></script>
+  <script src="music-analysis.js?v=20260922-mood-palette-1"></script>
+  <script src="script.js?v=20260914-glass-sphere-1"></script>
   <script src="privacy-account.js?v=20261023-1"></script>
+  <script src="mobile-ui.js?v=20261016-1"></script>
+  <script src="lesson-layout.js?v=20261017-1"></script>
+  <script src="vendor/gsap/gsap.min.js"></script>
+  <script src="vendor/gsap/ScrambleTextPlugin.min.js"></script>
+  <script src="scrambled-text.js?v=20261017-fast-scramble"></script>
+  <script src="micro-interactions.js"></script>
+  <script src="wake-volume.js"></script>
+  <script src="thought-line.js"></script>
+  <script src="swipe-songs.js"></script>
+  <script src="squish-tension.js"></script>
+  <script type="module" src="mood-sphere.js?v=20261009-preview-1"></script>
 </body>
 </html>

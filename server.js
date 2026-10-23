@@ -493,6 +493,8 @@ function sendHapticTcpPayload(payload, target = discoveredHapticDevice) {
     }
 
     let settled = false;
+    let reply = "";
+    const requestedAt = Date.now() / 1000;
     const socket = net.createConnection({
       host: target.host,
       port: target.port
@@ -510,8 +512,17 @@ function sendHapticTcpPayload(payload, target = discoveredHapticDevice) {
       socket.end(payload);
     });
 
+    socket.on('data', chunk => { reply += chunk.toString(); });
     socket.on('close', (hadError) => {
-      if (!hadError) finish(resolve);
+      if (hadError) return;
+      try {
+        const response = reply ? JSON.parse(reply) : null;
+        if (response?.ok === false) { finish(() => reject(new Error(response.error || 'Device rejected request'))); return; }
+        if (Number.isFinite(response?.deviceTime)) {
+          target.clockOffset = response.deviceTime - (requestedAt + Date.now() / 1000) / 2;
+        }
+        finish(() => resolve(response));
+      } catch (error) { finish(() => reject(error)); }
     });
 
     socket.on('timeout', () => {
@@ -562,12 +573,13 @@ async function handleHapticsPair(req, res) {
       return;
     }
 
-    await sendHapticTcpPayload(JSON.stringify({
+    const confirmation = await sendHapticTcpPayload(JSON.stringify({
       type: 'hello',
       deviceName: 'Soundi Web',
       pairingCode
     }), target);
 
+    if (!confirmation?.ok) throw new Error('iPhone 앱을 최신 버전으로 업데이트한 후 다시 연결해주세요.');
     discoveredHapticDevice = target;
 
     console.log(`[Soundi Haptics] 연결 코드 확인 요청: ${pairingCode}`);
@@ -630,6 +642,7 @@ async function handleHapticsPlay(req, res) {
 
     const body = JSON.stringify({
       type: 'play',
+      startAt: Number.isFinite(payload.startAt) ? payload.startAt + (discoveredHapticDevice.clockOffset || 0) : null,
       events,
       visual: payload.visual || null
     });

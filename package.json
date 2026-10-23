@@ -7,11 +7,14 @@
     "start": "node server.js",
     "serve": "node server.js",
     "static": "python3 -m http.server 8126",
-    "check": "node --check script.js && node --check music-analysis.js && node --check server.js",
-    "test": "node test/music-analysis.test.js"
+    "check": "node --check script.js && node --check music-analysis.js && node --check server.js && node --check mood-sphere.js",
+    "test": "node test/music-analysis.test.js",
+    "test:haptics": "node --test test/haptic-sync.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {}
+  "dependencies": {
+    "gsap": "^3.15.0"
+  }
 }

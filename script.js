@@ -290,7 +290,7 @@ let hasCenteredComposeOnEntry = false;
 let isSectionScrolling = false;
 let lessonTrack = 'pitch';
 let lessonStep = 0;
-let lessonTensionEnabled = false;
+let lessonTensionEnabled = true;
 let aiCoachStatus = 'idle';
 let aiCoachFeedback = null;
 let aiAnalyzeLockedUntilEdit = false;
@@ -486,7 +486,7 @@ const translations = {
     lessonAdd9Name: '부가9도',
     lessonAdd9Desc: '라·도♯·미 세 음에 높은 시를 하나 더 겹쳐 만든 화음이에요. 기본이 되는 세 음은 그대로 유지하면서 새로운 음 하나를 더하기 때문에, 기존의 분위기를 크게 바꾸지 않고 더 넓고 풍부한 조화를 만들 수 있어요. 이런 화음을 ‘부가9도 화음’이라고 해요.',
     lessonFeedbackDemo: '시각 피드백은 내 음악의 구조를 읽어줘요.',
-    analysisVisualTab: '내 곡의 분위기',
+    analysisVisualTab: '시각적 피드백',
     analysisAiTab: 'With AI',
     hapticInfoTitle: '햅틱으로 음악을 느껴보세요.',
     hapticInfoBody: '음악을 재생하면 리듬과 화음을 햅틱으로 함께 느낄 수 있어요.',
@@ -560,7 +560,7 @@ const translations = {
     lessonAdd9Name: 'Add 9',
     lessonAdd9Desc: 'Add a higher B to A, C♯, and E to create this four-note chord. The original three-note combination stays in place while one new note is added, creating a wider and richer harmony without greatly changing its basic character. This is called an “add9 chord.”',
     lessonFeedbackDemo: 'Visual feedback reads your composition structure.',
-    analysisVisualTab: 'My Song Mood',
+    analysisVisualTab: 'Visual Feedback',
     analysisAiTab: 'With AI',
     hapticInfoTitle: 'Feel music through haptics.',
     hapticInfoBody: 'When you play your music, rhythm and harmony can be felt through haptic feedback.',
@@ -950,7 +950,8 @@ themeMenuButton?.addEventListener('click', () => {
   themeMenuButton.setAttribute('aria-expanded', String(willOpen));
 });
 
-document.addEventListener('click', () => {
+document.addEventListener('click', (event) => {
+  if (matchMedia('(width < 640px)').matches && event.target.closest('.site-header')) return;
   if (userMenu) userMenu.hidden = true;
   if (themePicker) themePicker.hidden = true;
   userStatusButton?.setAttribute('aria-expanded', 'false');
@@ -1838,6 +1839,7 @@ function refreshComposeZoomSize() {
   const rawSize = getBaseComposeCellSize() * composeZoom;
   const snappedSize = Math.round(rawSize * dpr) / dpr;
   document.documentElement.style.setProperty('--compose-cell', `${snappedSize}px`);
+  document.documentElement.style.setProperty('--score-line-width', `${Math.max(.4, Math.min(1, composeZoom))}px`);
   updateGridMetrics();
 }
 
@@ -2450,16 +2452,33 @@ soundiHapticStatusTimer = window.setInterval(() => {
   refreshSoundiHapticStatus();
 }, 4000);
 
-async function sendSoundiHapticsToActiveDevice() {
-  const events = buildHapticEventsFromComposition();
+let hapticRequestQueue = Promise.resolve();
+let playbackStepDeadline = 0;
+function queueHapticRequest(url, options) {
+  const request = hapticRequestQueue.then(() => fetch(url, {
+    ...options, signal: AbortSignal.timeout(5000)
+  }));
+  hapticRequestQueue = request.catch(() => {});
+  return request;
+}
+
+async function sendSoundiHapticsToActiveDevice(startAt, fromStep = getLoopBounds().start) {
+  const offset = (fromStep - getLoopBounds().start) * getStepIntervalSeconds();
+  const events = buildHapticEventsFromComposition()
+    .filter(event => event.startTime + event.duration > offset)
+    .map(event => ({...event,
+      startTime: Math.max(0, event.startTime - offset),
+      duration: event.duration - Math.max(0, offset - event.startTime)
+    }));
   if (!events.length) return false;
 
   try {
-    const response = await fetch('/api/haptics/play', {
+    const response = await queueHapticRequest('/api/haptics/play', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         events,
+        startAt,
         visual: buildSoundiVisualPlayback()
       })
     });
@@ -2481,7 +2500,7 @@ async function sendSoundiHapticsToActiveDevice() {
 
 async function stopSoundiHapticsOnActiveDevice() {
   try {
-    const response = await fetch('/api/haptics/stop', {
+    const response = await queueHapticRequest('/api/haptics/stop', {
       method: 'POST'
     });
 
@@ -2858,10 +2877,11 @@ function renderMoodBlob(analysis, activeStep = -1) {
   const { colors, motion: visualMotion } = getMoodVisualState(analysis, activeStep);
   const [color, color2, color3, color4] = colors;
 
-  blob.classList.remove('is-shape-reset');
-  void blob.offsetWidth;
+  const hasGlassSphere = blob.classList.contains('has-glass-sphere');
 
-  blob.className = `mark mood-${analysis.paletteKey}`;
+  blob.className = `mark mood-${analysis.paletteKey}${hasGlassSphere ? ' has-glass-sphere' : ''}`;
+  blob.soundiSphereState = { colors, energy: analysis.energy, tension: analysis.tension };
+  window.dispatchEvent(new CustomEvent('soundi:sphere-update', { detail: blob.soundiSphereState }));
   blob.style.setProperty('--x', '50%');
   blob.style.setProperty('--y', '34%');
   blob.style.setProperty('--w', '248px');
@@ -3784,12 +3804,37 @@ function getVisualColorSuggestion(intent, summary) {
   return '따뜻한 노랑과 부드러운 흰색';
 }
 
+let aiLoaderClock = null;
+let aiLoaderStarted = 0;
+function syncAILoader() {
+  if (!aiAnalyzeButton) return;
+  const loading = aiCoachStatus === 'loading';
+  aiAnalyzeButton.classList.toggle('is-writing', loading);
+  aiAnalyzeButton.setAttribute('aria-busy', String(loading));
+  if (loading) {
+    aiAnalyzeButton.removeAttribute('data-i18n');
+    if (!aiAnalyzeButton.querySelector('.lattice-loader')) {
+      aiLoaderStarted = performance.now();
+      aiAnalyzeButton.innerHTML = '<span class="lattice-loader" aria-hidden="true">' + Array.from({length:16}, (_,i) => `<i style="--cell-delay:${(i%4+Math.floor(i/4))*90}ms"></i>`).join('') + '</span><span class="ai-writing-label"></span><span class="ai-writing-time" aria-hidden="true"></span>';
+    }
+    aiAnalyzeButton.querySelector('.ai-writing-label').textContent = currentLanguage === 'ko' ? '피드백을 쓰고 있어요' : 'Writing your feedback';
+    const tick = () => { const timer = aiAnalyzeButton.querySelector('.ai-writing-time'); if (timer) timer.textContent = `${((performance.now()-aiLoaderStarted)/1000).toFixed(1)}s`; };
+    tick();
+    if (!aiLoaderClock) aiLoaderClock = setInterval(tick, 100);
+  } else {
+    clearInterval(aiLoaderClock); aiLoaderClock = null;
+    aiAnalyzeButton.setAttribute('data-i18n', 'aiAnalyzeButton');
+    aiAnalyzeButton.textContent = translate('aiAnalyzeButton');
+  }
+}
+
 function renderAICoachResult() {
+  syncAILoader();
   if (!aiCoachResult) return;
   if (aiCoachSource) aiCoachSource.textContent = aiCoachFeedback?.source === 'llm' ? 'llm' : 'local';
   if (aiAnalyzeButton) aiAnalyzeButton.disabled = aiCoachStatus === 'loading' || aiAnalyzeLockedUntilEdit;
   if (aiCoachStatus === 'loading') {
-    aiCoachResult.innerHTML = `<p class="ai-coach-muted">${currentLanguage === 'ko' ? '현재 곡과 작곡 의도를 비교하고 있어요...' : 'Comparing your composition with your intent...'}</p>`;
+    aiCoachResult.innerHTML = '';
     return;
   }
   if (!aiCoachFeedback) {
@@ -3873,7 +3918,8 @@ function sanitizeAIOperations(operations) {
 }
 
 function setAnalysisTab(tabName) {
-  const nextTab = isExampleMode || !analysisTabNames.includes(tabName) ? 'visual' : tabName;
+  const restrictExampleTab = isExampleMode && !window.matchMedia('(width < 768px)').matches;
+  const nextTab = restrictExampleTab || !analysisTabNames.includes(tabName) ? 'visual' : tabName;
   analysisTabs.forEach((button) => {
     const isActive = button.dataset.analysisTab === nextTab;
     button.classList.toggle('is-active', isActive);
@@ -3889,41 +3935,57 @@ function setAnalysisTab(tabName) {
 }
 
 async function analyzeWithAICoach() {
-  if (aiAnalyzeLockedUntilEdit) return;
+  if (aiCoachStatus === 'loading' || aiAnalyzeLockedUntilEdit) return;
   if (!validateAICoachForm(true)) {
     aiCoachStatus = 'idle';
     aiCoachFeedback = null;
+    window.soundiThought?.reset();
     renderAICoachResult();
     return;
   }
   if (aiFormMessage) aiFormMessage.textContent = '';
-  const analysis = analyzeComposition();
-  const payload = createCoachPayload(analysis);
   aiCoachStatus = 'loading';
   aiCoachFeedback = null;
+  window.soundiThought?.start();
   renderAICoachResult();
-  const localFeedback = createLocalCoachFeedback(payload);
   try {
-    const response = await fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!response.ok) throw new Error('AI server unavailable');
-    const data = await response.json();
-    const llmFeedback = data.feedback || {};
-    aiCoachFeedback = {
-      ...localFeedback,
-      summary: llmFeedback.summary || localFeedback.summary,
-      gapAnalysis: llmFeedback.gapAnalysis || localFeedback.gapAnalysis,
-      source: 'llm'
-    };
+    window.soundiThought?.step('read');
+    const analysis = analyzeComposition();
+    const payload = createCoachPayload(analysis);
+    const localFeedback = createLocalCoachFeedback(payload);
+    window.soundiThought?.step('local');
+    try {
+      window.soundiThought?.step('request');
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) throw new Error('AI server unavailable');
+      const data = await response.json();
+      window.soundiThought?.step('received');
+      const llmFeedback = data.feedback || {};
+      aiCoachFeedback = {
+        ...localFeedback,
+        summary: llmFeedback.summary || localFeedback.summary,
+        gapAnalysis: llmFeedback.gapAnalysis || localFeedback.gapAnalysis,
+        source: 'llm'
+      };
+    } catch (error) {
+      aiCoachFeedback = localFeedback;
+      window.soundiThought?.step('fallbackStep');
+    }
+    aiCoachStatus = 'ready';
+    aiAnalyzeLockedUntilEdit = true;
+    window.soundiThought?.step('complete');
+    window.soundiThought?.finish(aiCoachFeedback.source === 'llm' ? 'done' : 'fallback');
   } catch (error) {
-    aiCoachFeedback = localFeedback;
+    aiCoachStatus = 'idle';
+    window.soundiThought?.finish('error');
+    if (aiFormMessage) aiFormMessage.textContent = currentLanguage === 'ko' ? '분석을 완료하지 못했어요. 다시 시도해주세요.' : 'Could not finish the analysis. Please try again.';
+  } finally {
+    renderAICoachResult();
   }
-  aiCoachStatus = 'ready';
-  aiAnalyzeLockedUntilEdit = true;
-  renderAICoachResult();
 }
 
 function getMostRepeatedNote() {
@@ -3971,6 +4033,9 @@ function getSustainLength(noteId, step) {
   return length;
 }
 
+const activePianoOscillators = new Set();
+let playbackStartStep = null;
+
 function playPianoLikeNote(note, sustainSteps = 1, accidental = 0) {
   ensureAudio();
   const now = audioContext.currentTime;
@@ -4017,6 +4082,8 @@ function playPianoLikeNote(note, sustainSteps = 1, accidental = 0) {
     gain.gain.setValueAtTime(partial.gain * 0.62, now + Math.max(0.18, duration - 0.1));
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.24);
     oscillator.connect(gain).connect(filter);
+    activePianoOscillators.add(oscillator);
+    oscillator.onended = () => { activePianoOscillators.delete(oscillator); oscillator.disconnect(); gain.disconnect(); };
     oscillator.start(now);
     oscillator.stop(now + duration + 0.26);
   });
@@ -4140,7 +4207,10 @@ function renderLessonMood() {
     target.style.setProperty('--mood-b', state.colors[1]);
     target.style.setProperty('--mood-c', state.colors[2]);
   });
-  lessonMoodOrb.className = `feedback-orb ${state.className}`;
+  lessonMoodOrb.classList.remove('mood-bright', 'mood-calm', 'mood-warm', 'mood-tense');
+  lessonMoodOrb.classList.add(state.className);
+  lessonMoodOrb.soundiSphereState = { colors: state.colors };
+  window.dispatchEvent(new CustomEvent('soundi:lesson-sphere-update', { detail: lessonMoodOrb.soundiSphereState }));
   lessonMoodText.textContent = localized(state.text);
   lessonMoodText.classList.remove('is-visible');
   window.setTimeout(() => lessonMoodText.classList.add('is-visible'), 30);
@@ -4178,10 +4248,18 @@ async function startPlayback() {
   syncControlButtons();
   startCaptionCycle(playbackAnalysis);
 
-  await sendSoundiHapticsToActiveDevice();
-  if (!isPlaying || generation !== playbackGeneration) return;
+  schedulePlaybackStart(generation);
+}
 
-  tickPlayback();
+function schedulePlaybackStart(generation) {
+  const leadMs = 1000;
+  playbackStartStep = playStep;
+  playbackStepDeadline = performance.now() + leadMs;
+  void sendSoundiHapticsToActiveDevice((Date.now() + leadMs) / 1000, playStep);
+  playTimer = window.setTimeout(() => {
+    if (!isPlaying || generation !== playbackGeneration) return;
+    tickPlayback();
+  }, leadMs);
 }
 
 function tickPlayback() {
@@ -4191,21 +4269,19 @@ function tickPlayback() {
   const loopBounds = getLoopBounds();
   flashStep(playStep, false);
   playStep += 1;
+  playbackStepDeadline += interval;
 
   if (playStep >= loopBounds.end) {
     playTimer = window.setTimeout(async () => {
       if (!isPlaying || generation !== playbackGeneration) return;
 
       playStep = loopBounds.start;
-      await sendSoundiHapticsToActiveDevice();
-
-      if (!isPlaying || generation !== playbackGeneration) return;
-      tickPlayback();
+      schedulePlaybackStart(generation);
     }, interval + LOOP_GAP_MS);
     return;
   }
 
-  playTimer = window.setTimeout(tickPlayback, interval);
+  playTimer = window.setTimeout(tickPlayback, Math.max(0, playbackStepDeadline - performance.now()));
 }
 
 function getLoopBounds() {
@@ -4244,7 +4320,7 @@ function flashStep(step, audition) {
   if (isPlaying && !audition) animateComposeStep(step, loopBounds);
   if (audition || isPlaying) {
     active.forEach((item) => {
-      if (!audition && step > 0 && hasNote(item.noteId, step - 1)) return;
+      if (!audition && step !== playbackStartStep && step > 0 && hasNote(item.noteId, step - 1)) return;
       const note = notes.find((entry) => entry.id === item.noteId);
       if (note) playPianoLikeNote(note, audition ? 1 : getSustainLength(item.noteId, step), item.accidental || 0);
     });
@@ -4253,6 +4329,8 @@ function flashStep(step, audition) {
 }
 
 function stopPlayback() {
+  for (const oscillator of activePianoOscillators) { try { oscillator.stop(); } catch {} }
+  activePianoOscillators.clear();
   cancelAnimationFrame(composeProgressFrame);
   composeProgressFrame = 0;
   playbackGeneration += 1;
@@ -4901,7 +4979,48 @@ function closeDeleteConfirmModal() {
   deleteConfirmModal.setAttribute('aria-hidden', 'true');
 }
 
-async function deleteMySongs(ids) {
+// Call Chip-inspired deletion feedback, tied to the actual operation result.
+async function runDeleteChip(operation) {
+  const en = currentLanguage === 'en';
+  const chip = document.createElement('div');
+  chip.className = 'delete-call-chip';
+  chip.setAttribute('role', 'status');
+  chip.setAttribute('aria-live', 'polite');
+  const label = document.createElement('span');
+  label.textContent = en ? 'Deleting' : '삭제 중';
+  const timer = document.createElement('span');
+  timer.className = 'delete-chip-timer';
+  timer.setAttribute('aria-hidden', 'true');
+  chip.append(label, timer);
+  let region = document.getElementById('deleteChipRegion');
+  if (!region) {
+    region = document.createElement('div');
+    region.id = 'deleteChipRegion';
+    document.body.append(region);
+  }
+  region.append(chip);
+  const start = performance.now();
+  const tick = () => { timer.textContent = `${((performance.now()-start)/1000).toFixed(1)}s`; };
+  tick();
+  const clock = setInterval(tick, 100);
+  let result = false;
+  try { result = await operation(); }
+  catch (error) { console.warn('[Soundi Delete] Operation failed', error); }
+  finally {
+    clearInterval(clock);
+    tick();
+    chip.classList.add(result === true ? 'is-success' : 'is-error');
+    label.textContent = result === true ? (en ? 'Deleted' : '삭제 완료') : (en ? 'Could not delete' : '삭제하지 못했어요');
+    setTimeout(() => chip.remove(), result === true ? 2600 : 4500);
+  }
+  return result;
+}
+
+async function deleteMySongs(ids, options = {}) {
+  return runDeleteChip(() => performDeleteMySongs(ids, options));
+}
+
+async function performDeleteMySongs(ids, {beforeRemove} = {}) {
   const uniqueIds = [...new Set((ids || []).map(String))];
   if (!uniqueIds.length || currentUser?.role !== 'general' || !supabaseClient) return;
 
@@ -4939,6 +5058,8 @@ async function deleteMySongs(ids) {
     return;
   }
 
+  if (beforeRemove) await beforeRemove();
+
   if (currentSongId && deletedIds.includes(String(currentSongId))) {
     startNewSong();
   }
@@ -4958,6 +5079,7 @@ async function deleteMySongs(ids) {
   renderArchive();
   renderDashboard();
   syncComposePublishButton();
+  return true;
 }
 
 function toggleMySongsPanel() {
@@ -5171,6 +5293,10 @@ function restoreArchivePreviewDraft() {
 }
 
 async function deleteSongById(id) {
+  return runDeleteChip(() => performDeleteSongById(id));
+}
+
+async function performDeleteSongById(id) {
   const songId = String(id || '');
   if (!songId || !currentUser || !supabaseClient) return false;
 
@@ -5649,6 +5775,9 @@ function applyLanguage(nextLanguage = currentLanguage) {
     languageToggle.querySelector('.language-next')?.replaceChildren(document.createTextNode(nextText));
     languageToggle.setAttribute('aria-label', isKorean ? '영어로 전환' : '한국어로 전환');
   }
+  document.querySelectorAll("[data-language]").forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.language === currentLanguage));
+  });
   applyTheme(currentThemePreference, false);
   syncControlButtons();
   updateHarmonyTypeControls();
@@ -5687,6 +5816,7 @@ function renderLessonStep() {
   if (lessonPrevButton) lessonPrevButton.disabled = lessonTrackOrder.indexOf(lessonTrack) === 0;
   if (lessonNextButton) lessonNextButton.textContent = lessonTrack === 'feedback' ? 'Compose' : 'Next';
   if (lessonStartButton) lessonStartButton.hidden = lessonTrack !== 'feedback';
+  document.dispatchEvent(new Event('soundi:lessonchange'));
 }
 
 function setLessonTrack(nextTrack) {
@@ -5723,16 +5853,23 @@ function setView(viewName) {
   if (wasCompose && nextView !== 'compose') stopComposeTimeTracking();
   document.body.dataset.view = nextView;
   const accountArea = document.getElementById('userStatusArea');
-  const accountParent = nextView === 'compose'
+  const accountParent = window.matchMedia('(width < 640px)').matches
+    ? document.getElementById('primaryNavigation')
+    : nextView === 'compose'
     ? document.querySelector('.compose-publish-controls')
     : document.body;
-  if (accountArea && accountParent) accountParent.appendChild(accountArea);
+  if (accountArea && accountParent) {
+    if (accountParent.id === 'primaryNavigation') accountParent.prepend(accountArea);
+    else accountParent.appendChild(accountArea);
+  }
   if (!wasCompose && nextView === 'compose') startComposeTimeTracking();
   document.querySelectorAll('.view').forEach((view) => {
     view.classList.toggle('is-active', view.id === `${nextView}View`);
   });
   document.querySelectorAll('.nav-button').forEach((button) => {
     button.classList.toggle('is-active', button.dataset.view === nextView);
+    if (button.dataset.view === nextView) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
   });
   if (nextView !== 'compose' && !(nextView === 'archive' && archivePlayerActive) && isPlaying) stopPlayback();
   renderArchivePlayer();
@@ -6391,6 +6528,7 @@ function syncVolumeButton() {
   if (volumeSlider && Number(volumeSlider.value) !== displayedVolumePercent) {
     volumeSlider.value = String(displayedVolumePercent);
   }
+  document.dispatchEvent(new Event('soundi:volumechange'));
 }
 
 function setVolumeLevel(nextLevel) {
@@ -6552,7 +6690,8 @@ savedSongsTab?.addEventListener('click', () => setMySongsFilter('saved'));
 publishedSongsTab?.addEventListener('click', () => setMySongsFilter('published'));
 clearButton.addEventListener('click', () => {
   if (isArchivePreviewMode || isPublishedLocked) return;
-  clearComposition();
+  if (!composition.length) return;
+  runDeleteChip(() => { clearComposition(); return true; });
 });
 exampleName?.addEventListener('click', beginTitleEdit);
 exampleName?.addEventListener('blur', commitTitleEdit);
@@ -6636,8 +6775,12 @@ lessonRhythmGrid?.addEventListener('click', (event) => {
 });
 lessonPrevButton?.addEventListener('click', retreatLesson);
 lessonNextButton?.addEventListener('click', advanceLesson);
+setLessonTensionEnabled(true);
 lessonTensionToggle?.addEventListener('click', () => {
   setLessonTensionEnabled(!lessonTensionEnabled);
+});
+document.querySelectorAll('[data-language]').forEach(button => {
+  button.addEventListener('click', () => applyLanguage(button.dataset.language));
 });
 languageToggle?.addEventListener('click', () => {
   const nextLanguage = currentLanguage === 'ko' ? 'en' : 'ko';
@@ -6730,7 +6873,7 @@ initCustomCursor();
   const updateLoginCopy = () => {
     const ko = document.documentElement.lang !== 'en';
     const title = document.getElementById('loginTitle');
-    if (title) title.textContent = 'soundi';
+    if (title && !title.classList.contains('scramble-ready')) title.textContent = 'SOUNDI';
     const googleText = googleButton?.querySelector('span:last-child');
     if (googleText) googleText.textContent = ko ? 'Google로 계속하기' : 'Continue with Google';
     if (adminButton) adminButton.textContent = ko ? '관리자' : 'Admin';
@@ -7179,7 +7322,7 @@ function renderArchivePlayer() {
         { opacity: 0 },
         { opacity: 1 }
       ], options);
-      if (window.matchMedia('(max-width: 699px)').matches) {
+      if (window.matchMedia('(width < 768px)').matches) {
         const offset = oldGridTop - archiveGrid.getBoundingClientRect().top;
         archiveGrid.getAnimations().forEach(animation => animation.cancel());
         archiveGrid.animate([{ transform: `translateY(${offset}px)` }, { transform: 'translateY(0)' }], options);

@@ -359,7 +359,21 @@
     const valence = clamp01(Number.isFinite(result?.valence) ? result.valence : result?.brightness);
     const arousal = clamp01(Number.isFinite(result?.arousal) ? result.arousal : result?.energy);
     const tension = clamp01(result?.tension);
-    const colors = createVatPalette(valence, arousal, tension);
+    // Mood identity selects the palette. Numeric analysis changes emphasis,
+    // not the global lightness or saturation of every colour.
+    const primary = moodMeta[result?.primaryMood] || moodMeta.sparse;
+    const secondary = moodMeta[result?.secondaryMood] || primary;
+    const base = primary.palette;
+    const total = (result?.primaryScore || 0) + (result?.secondaryScore || 0);
+    const secondaryShare = total > 0 ? clamp01(result.secondaryScore / total) : 0;
+    const blend = secondaryShare * 0.44;
+    const accent = result?.primaryMood === 'dreamy' ? '#b39aee' : base[0];
+    const colors = [
+      mixHex(base[0], accent, tension * 0.45),
+      mixHex(base[1], secondary.palette[0], blend),
+      mixHex(base[2], accent, tension * 0.32),
+      mixHex(base[3], secondary.palette[3], blend * 0.65)
+    ];
 
     return {
       colors,
@@ -369,7 +383,8 @@
       irregularity: tension,
       focusX: `${32 + valence * 36}%`,
       focusY: `${64 - arousal * 28}%`,
-      colorModel: 'vat',
+      colorModel: 'mood-palette',
+      paletteBlend: blend,
       vat: { valence, arousal, tension }
     };
   }

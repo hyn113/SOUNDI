@@ -1,0 +1,34 @@
+/* Shared Lucide icon sizing and stroke, across all device sizes. */
+:root { --soundi-icon-size: 24px; --soundi-icon-stroke: 1.7px; }
+svg.soundi-icon {
+  width: var(--soundi-icon-size) !important;
+  height: var(--soundi-icon-size) !important;
+  flex: 0 0 var(--soundi-icon-size);
+  vertical-align: middle;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: var(--soundi-icon-stroke) !important;
+  pointer-events: none;
+}
+.zoom-button, .dashboard-close-button, .cover-close-button {
+  display: grid; place-items: center;
+}
+.cover-close-button::before, .cover-close-button::after { content: none; }
+.my-songs-toggle-symbol { width: var(--soundi-icon-size); height: var(--soundi-icon-size); }
+.play-icon { width: var(--soundi-icon-size); height: var(--soundi-icon-size); margin-left: 0; }
+.wave-icon, .archive-equalizer { width: var(--soundi-icon-size); height: var(--soundi-icon-size); }
+/* Hide only the idle play glyph; keep the Lucide playback indicator visible. */
+.archive-card.is-track-playing .archive-equalizer svg { display: block; }
+.google-login-mark { display: grid; place-items: center; }
+.my-songs-new-button, .my-song-more { display: grid; place-items: center; }
+html .custom-select-button::after {
+  width: var(--soundi-icon-size); height: var(--soundi-icon-size);
+  border: 0; transform: translateY(-50%);
+  background: currentColor;
+  mask: url('vendor/lucide/chevron-down.svg') center / contain no-repeat;
+  -webkit-mask: url('vendor/lucide/chevron-down.svg') center / contain no-repeat;
+}
+
+svg.soundi-icon.is-fill-icon { fill: currentColor !important; }
+
+svg.soundi-icon[data-lucide="play"] { stroke-linejoin: miter; }
