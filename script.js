@@ -951,7 +951,7 @@ themeMenuButton?.addEventListener('click', () => {
 });
 
 document.addEventListener('click', (event) => {
-  if (matchMedia('(width < 1024px)').matches && event.target.closest('.site-header')) return;
+  if (matchMedia('(width < 1024px), (hover: none) and (pointer: coarse)').matches && event.target.closest('.site-header')) return;
   if (userMenu) userMenu.hidden = true;
   if (themePicker) themePicker.hidden = true;
   userStatusButton?.setAttribute('aria-expanded', 'false');
@@ -5853,7 +5853,7 @@ function setView(viewName) {
   if (wasCompose && nextView !== 'compose') stopComposeTimeTracking();
   document.body.dataset.view = nextView;
   const accountArea = document.getElementById('userStatusArea');
-  const accountParent = window.matchMedia('(width < 1024px)').matches
+  const accountParent = window.matchMedia('(width < 1024px), (hover: none) and (pointer: coarse)').matches
     ? document.getElementById('primaryNavigation')
     : nextView === 'compose'
     ? document.querySelector('.compose-publish-controls')
