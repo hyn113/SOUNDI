@@ -20,9 +20,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@kfonts/line-seed-sans-kr@0.1.0/index.css" />
-  <link rel="stylesheet" href="style.css?v=20261023-v10-release-2" />
-  <link rel="stylesheet" href="responsive.css?v=20261025-tablet-touch-nav" />
+  <link rel="stylesheet" href="style.css?v=20261025-slower-record" />
+  <link rel="stylesheet" href="responsive.css?v=20261025-menu-order" />
   <link rel="stylesheet" href="lesson-layout.css?v=20261023-v10-release-2" />
+  <link rel="stylesheet" href="archive-layout.css?v=20261025-dock-large-disc" />
 </head>
 <body data-view="home">
   <div id="loginModal" class="login-modal" aria-hidden="false">
@@ -494,6 +495,7 @@
         </div>
         <div class="transport-controls" aria-label="playback controls">
           <button id="playButton" class="control-button play-button" type="button" aria-pressed="false" aria-label="Play"></button>
+          <button id="publishedNewSongButton" class="control-button" type="button" aria-label="새로 만들기" hidden></button>
           <button id="saveButton" class="control-button save-button" type="button" aria-label="Save"></button>
           <button id="clearButton" class="control-button clear-button" type="button" aria-label="Clear"></button>
         </div>
@@ -504,7 +506,7 @@
     </section>
 
     <section id="archiveView" class="view archive-view" aria-label="archive">
-      <section id="archivePlayer" class="archive-player" aria-label="Archive player"></section>
+      <div id="archivePlayerSlot"><section id="archivePlayer" class="archive-player" aria-label="Archive player"></section></div>
       <div id="archiveGrid" class="archive-grid"></div>
     </section>
   </main>
@@ -519,7 +521,7 @@
         <strong id="userMenuName"></strong>
         <span id="userMenuRole"></span>
       </div>
-      <button id="dashboardButton" class="user-menu-action" type="button">Dashboard</button>
+      <button id="dashboardButton" class="user-menu-action" type="button" data-label-ko="대시보드" data-label-en="Dashboard">대시보드</button>
       <button id="themeMenuButton" class="user-menu-action user-menu-theme-button" type="button" aria-haspopup="dialog" aria-expanded="false">
         <span id="currentThemeLabel">시스템 기본값</span><span class="user-menu-chevron" aria-hidden="true">›</span>
       </button>
@@ -660,9 +662,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
   <script src="music-analysis.js?v=20261023-v10-release-2"></script>
-  <script src="script.js?v=20261025-tablet-touch-nav"></script>
+  <script src="script.js?v=20261025-auto-dock"></script>
   <script src="privacy-account.js?v=20261023-v10-release-2"></script>
-  <script src="mobile-ui.js?v=20261025-tablet-touch-nav"></script>
+  <script src="mobile-ui.js?v=20261025-menu-order"></script>
   <script src="lesson-layout.js?v=20261023-v10-release-2"></script>
   <script src="vendor/gsap/gsap.min.js?v=20261023-v10-release-2"></script>
   <script src="vendor/gsap/ScrambleTextPlugin.min.js?v=20261023-v10-release-2"></script>

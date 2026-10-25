@@ -3678,6 +3678,10 @@ body.is-example-mode .example-import-button {
   transition: color 160ms ease, background 160ms ease, transform 160ms ease;
 }
 
+.control-button[hidden] {
+  display: none;
+}
+
 .control-button svg {
   width: 30px;
   height: 30px;
@@ -8897,7 +8901,7 @@ body[data-view="archive"] .archive-player.has-song { display: flex; }
 .archive-player { position: fixed; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(680px, calc(100% - 64px)); z-index: 40; align-items: center; gap: 28px; padding: 22px 30px; border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 28px; background: color-mix(in srgb, var(--paper) 95%, transparent); box-shadow: 0 16px 60px #0002; backdrop-filter: blur(20px); }
 .archive-view:has(.archive-player.has-song) { padding-bottom: 260px; }
 .archive-turntable { position: relative; flex: 0 0 164px; width: 164px; aspect-ratio: 1; display: grid; place-items: center; border-radius: 22px; background: linear-gradient(145deg, color-mix(in srgb, var(--ink) 5%, var(--paper)), color-mix(in srgb, var(--ink) 12%, var(--paper))); box-shadow: inset 1px 1px 2px #fff5, 0 8px 20px #0001; }
-.archive-turntable .player-vinyl { width: 84%; animation: archiveRecordSpin 10s linear infinite; animation-play-state: paused; }
+.archive-turntable .player-vinyl { width: 84%; animation: archiveRecordSpin 12s linear infinite; animation-play-state: paused; }
 .archive-player.is-playing .archive-turntable .player-vinyl { animation-play-state: running; }
 .player-tonearm { position: absolute; top: 12%; right: 9%; width: 8%; height: 64%; border-right: 4px solid var(--muted); border-bottom: 9px solid var(--muted); border-radius: 0 0 8px 0; transform-origin: top center; transform: rotate(-18deg); transition: transform 600ms ease; filter: drop-shadow(2px 2px 2px #0003); }
 .player-tonearm::before { content: ''; position: absolute; top: -4px; right: -7px; width: 10px; height: 10px; border-radius: 50%; background: var(--paper); border: 3px solid var(--muted); }

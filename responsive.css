@@ -159,8 +159,8 @@
   .compose-view.is-playing .analysis-pages { min-height: 240px; }
 }
 
-/* Phone and tablet navigation share the compact header. */
-@media (width < 1024px), (hover: none) and (pointer: coarse) {
+/* Only phone-width screens use compact navigation. */
+@media (width < 768px) {
   :root {
     --bottom-nav-height: calc(56px + env(safe-area-inset-bottom));
     --home-section-height: calc(100dvh - var(--header-height) - var(--bottom-nav-height));
@@ -207,7 +207,7 @@
 }
 
 .mobile-menu-toggle, .mobile-feedback-close { display: none; }
-@media (width < 1024px), (hover: none) and (pointer: coarse) {
+@media (width < 768px) {
   :root { --bottom-nav-height: 0px; }
   .site-header .wordmark { display: none; }
   .mobile-menu-toggle {
@@ -300,7 +300,7 @@
 
 /* Compact navigation exposes both language choices without desktop hover motion. */
 .compact-language-options { display: none; }
-@media (width < 1024px), (hover: none) and (pointer: coarse) {
+@media (width < 768px) {
   .site-header .nav > .language-toggle { display: none; }
   .site-header .compact-language-options {
     display: flex; align-items: center; gap: 8px;
@@ -317,7 +317,7 @@
 
 /* Compact navigation: page name in the header, account inside the menu. */
 .compact-page-title { display: none; }
-@media (width < 1024px), (hover: none) and (pointer: coarse) {
+@media (width < 768px) {
   .site-header .compact-page-title { display: block; min-height: 44px; padding: 0 8px; border: 0; background: transparent; font-size: 14px; font-weight: 500; color: var(--ink); }
   .site-header .compact-page-title::after { content: none; }
   .site-header .nav { max-height: calc(100dvh - 62px); overflow-y: auto; }
@@ -335,4 +335,25 @@
 
 @media (min-width: 1024px) {
   :root { --bottom-nav-height: 0px; }
+}
+
+/* Tablet headers keep navigation visible, including touch-only devices. */
+@media (min-width: 768px) and (max-width: 1023px), (min-width: 768px) and (pointer: coarse) {
+  .site-header { padding-inline: max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-right)); }
+  .site-header .nav { gap: clamp(16px, 2.5vw, 28px); }
+  .site-header .nav-button { min-height: 44px; }
+  .site-header .language-toggle { width: 44px; height: 44px; min-height: 44px; }
+  .site-header .language-rail { display: block; transform: none; }
+  .site-header .language-current { height: 44px; line-height: 44px; text-align: center; }
+  .site-header .language-next { display: none; }
+}
+
+/* Keep account actions and page links in one ordered compact menu. */
+@media (width < 768px) {
+  .site-header .user-menu > .nav-button {
+    display: block; width: 100%; min-height: 44px; padding: 0 14px;
+    text-align: left; font-size: 13px; border-radius: 8px;
+  }
+  .site-header .user-menu > .nav-button.is-active { background: var(--soft-tint); }
+  .site-header .user-menu > .nav-button::after { content: none; }
 }

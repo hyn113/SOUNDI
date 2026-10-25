@@ -1,0 +1,64 @@
+/* One live player: large in the page, docked only after its LP scrolls away. */
+#archivePlayerSlot { display: contents; }
+@media (width < 768px), (orientation: portrait) and (hover: none) {
+  #archivePlayerSlot { display: block; }
+  #archiveView .archive-player.has-song {
+    position: relative; inset: auto; transform: none; width: 100%; margin: 0 auto 32px;
+    padding: 12px 16px 28px; flex-direction: column; gap: 26px;
+    border: 0; border-radius: 0; background: transparent; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  #archiveView .archive-turntable { flex: none; width: min(58vw, 320px); height: auto; aspect-ratio: 1; margin: 0; }
+  #archiveView .archive-turntable .player-vinyl { width: 100%; }
+  #archiveView .archive-player-body { flex: none; width: min(100%, 320px); text-align: center; }
+  #archiveView:has(.archive-player.has-song) { padding-bottom: calc(180px + var(--bottom-nav-height, 0px)); }
+  #archiveView .archive-player.is-scroll-docked {
+    position: fixed; left: 50%; bottom: calc(12px + var(--bottom-nav-height, 0px) + env(safe-area-inset-bottom));
+    transform: translateX(-50%); width: min(380px, calc(100vw - 24px));
+    margin: 0; padding: 12px; flex-direction: row; gap: 16px; z-index: 1200;
+    border: 1px solid var(--hairline); border-radius: 12px;
+    background: color-mix(in srgb, var(--paper) 94%, transparent);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  }
+  #archiveView .is-scroll-docked .archive-turntable { width: 128px; height: 128px; flex: 0 0 128px; }
+  #archiveView .is-scroll-docked .archive-player-body { flex: 1; width: auto; min-width: 0; }
+  #archiveView .is-scroll-docked .archive-player-author { margin-bottom: 10px; }
+  #archiveView .is-scroll-docked .archive-player-controls { margin-top: 4px; gap: 12px; }
+}
+@media (min-width: 768px) and (hover: hover) and (pointer: fine), (min-width: 768px) and (orientation: landscape) {
+  #archiveView.is-active[data-player-layout="split"]:has(.archive-player.has-song) {
+    display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
+    height: calc(100dvh - var(--header-height)); min-height: 0; overflow: hidden;
+    align-items: start; column-gap: clamp(32px, 5vw, 100px);
+    padding: 84px clamp(32px, 5vw, 100px) 32px;
+  }
+  #archiveView[data-player-layout="split"] .archive-player.has-song {
+    position: relative; top: 0; inset-inline: auto; bottom: auto;
+    transform: none; width: 100%; min-width: 0; margin: 0; padding: 0;
+    flex-direction: column; gap: clamp(24px, 4vh, 48px); overflow: visible;
+    border: 0; border-radius: 0; background: transparent; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  #archiveView[data-player-layout="split"] .archive-player::before,
+  #archiveView[data-player-layout="split"] .archive-player::after { content: none; }
+  #archiveView[data-player-layout="split"] .archive-turntable {
+    flex: none; width: min(90%, 432px, calc((100dvh - 340px) * 0.9)); height: auto; aspect-ratio: 1;
+    background: none; border-radius: 0; box-shadow: none;
+  }
+  #archiveView[data-player-layout="split"] .archive-turntable .player-vinyl { width: 100%; height: 100%; }
+  #archiveView[data-player-layout="split"] .archive-player-body { flex: none; width: min(100%, 480px); text-align: center; }
+  #archiveView[data-player-layout="split"] .archive-player-title { font-size: 18px; }
+  #archiveView[data-player-layout="split"] .archive-player-author { font-size: 12px; margin: 8px 0 26px; }
+  #archiveView[data-player-layout="split"] .archive-player-timeline > div { font-size: 12px; margin-top: 10px; }
+  #archiveView[data-player-layout="split"] .archive-player-timeline input { height: 3px; }
+  #archiveView[data-player-layout="split"] .archive-player-timeline input::-webkit-slider-thumb { width: 12px; height: 12px; }
+  #archiveView[data-player-layout="split"] .archive-player-timeline input::-moz-range-thumb { width: 12px; height: 12px; }
+  #archiveView[data-player-layout="split"] .archive-player-controls { gap: 24px; margin-top: 18px; }
+  #archiveView[data-player-layout="split"] .archive-player-controls .control-button { width: 44px; height: 44px; }
+  #archiveView[data-player-layout="split"]:has(.archive-player.has-song) .archive-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)); min-height: 0;
+    height: 100%; overflow-y: auto; overscroll-behavior: contain;
+    gap: clamp(24px, 3vw, 56px); padding: 0 8px 24px; align-content: start;
+  }
+  #archiveView[data-player-layout="split"]:has(.archive-player.has-song) .archive-card { width: 100%; max-width: none; min-width: 0; }
+}

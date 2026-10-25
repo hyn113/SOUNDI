@@ -1,9 +1,12 @@
 (() => {
   const mobile = matchMedia('(width < 768px)');
-  const compactNavigation = matchMedia('(width < 1024px), (hover: none) and (pointer: coarse)');
+  const compactNavigation = matchMedia('(width < 768px)');
   const header = document.querySelector('.site-header');
   const nav = document.getElementById('primaryNavigation');
   const toggle = document.getElementById('mobileMenuToggle');
+  const pageButtons = [...nav.querySelectorAll(':scope > .nav-button')];
+  const userMenu = document.getElementById('userMenu');
+  const themeButton = document.getElementById('themeMenuButton');
   const close = document.getElementById('mobileFeedbackClose');
   function setMenu(open, restoreFocus = false) {
     header.classList.toggle('is-menu-open', open);
@@ -24,13 +27,17 @@
       if (compactNavigation.matches) target.prepend(account);
       else target.appendChild(account);
     }
+    pageButtons.forEach(button => {
+      if (compactNavigation.matches) userMenu.insertBefore(button, themeButton);
+      else nav.insertBefore(button, document.getElementById('languageToggle'));
+    });
     document.getElementById('userMenu').hidden = true;
     setMenu(false);
   }
   toggle.addEventListener('click', () => setMenu(toggle.getAttribute('aria-expanded') !== 'true'));
-  nav.addEventListener('click', event => {
-    if (event.target.closest('[data-view]')) setMenu(false, compactNavigation.matches);
-  });
+  pageButtons.forEach(button => button.addEventListener('click', () => {
+    setMenu(false, compactNavigation.matches);
+  }));
   document.addEventListener('click', event => {
     if (!header.contains(event.target)) setMenu(false);
   });

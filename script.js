@@ -117,6 +117,7 @@ const zoomInButton = document.getElementById('zoomInButton');
 const zoomLabel = document.getElementById('zoomLabel');
 const resetZoomButton = document.getElementById('resetZoomButton');
 const playButton = document.getElementById('playButton');
+const publishedNewSongButton = document.getElementById('publishedNewSongButton');
 const saveButton = document.getElementById('saveButton');
 const clearButton = document.getElementById('clearButton');
 const volumeControl = document.getElementById('volumeControl');
@@ -307,6 +308,7 @@ let mySongItems = [];
 let mySongsFilter = 'saved';
 let selectedMySongIds = new Set();
 let lastSelectedMySongIndex = null;
+let archiveLayoutFrame = 0;
 let archivePlayerActive = false;
 let archivePausedStep = null;
 let playbackGeneration = 0;
@@ -600,6 +602,7 @@ function translate(key) {
 }
 
 const controlIcons = {
+  plus: '<svg viewBox="0 0 44 44" aria-hidden="true"><path d="M12 22H32M22 12V32"></path></svg>',
   play: '<svg class="is-fill-icon" viewBox="0 0 44 44" aria-hidden="true"><path d="M17 12L32 22L17 32Z"></path></svg>',
   pause: '<svg class="is-fill-icon" viewBox="0 0 44 44" aria-hidden="true"><path d="M15 13H20V31H15Z"></path><path d="M24 13H29V31H24Z"></path></svg>',
   prev: '<svg class="is-fill-icon" viewBox="0 0 44 44" aria-hidden="true"><path d="M14 12H18V32H14Z"></path><path d="M32 12L18 22L32 32Z"></path></svg>',
@@ -951,7 +954,7 @@ themeMenuButton?.addEventListener('click', () => {
 });
 
 document.addEventListener('click', (event) => {
-  if (matchMedia('(width < 1024px), (hover: none) and (pointer: coarse)').matches && event.target.closest('.site-header')) return;
+  if (matchMedia('(width < 768px)').matches && event.target.closest('.site-header')) return;
   if (userMenu) userMenu.hidden = true;
   if (themePicker) themePicker.hidden = true;
   userStatusButton?.setAttribute('aria-expanded', 'false');
@@ -4850,6 +4853,7 @@ function startNewSong() {
   clearHistorySnapshot = null;
   if (isPlaying) stopPlayback();
   isPublishedLocked = false;
+  document.body.classList.remove('is-published-locked-mode');
 
   isArchivePreviewMode = false;
   archivePreviewItemId = null;
@@ -5853,7 +5857,7 @@ function setView(viewName) {
   if (wasCompose && nextView !== 'compose') stopComposeTimeTracking();
   document.body.dataset.view = nextView;
   const accountArea = document.getElementById('userStatusArea');
-  const accountParent = window.matchMedia('(width < 1024px), (hover: none) and (pointer: coarse)').matches
+  const accountParent = window.matchMedia('(width < 768px)').matches
     ? document.getElementById('primaryNavigation')
     : nextView === 'compose'
     ? document.querySelector('.compose-publish-controls')
@@ -6484,6 +6488,7 @@ function setControlIcon(button, iconName, label) {
     Pause: 'click to<br />pause',
     Save: 'save this<br />piece',
     Clear: 'start<br />over',
+    'New song': 'create a<br />new song',
     'Previous example': 'previous<br />song',
     'Next example': 'next<br />song'
   };
@@ -6493,15 +6498,19 @@ function setControlIcon(button, iconName, label) {
     Pause: { ko: '일시정지', en: 'Pause' },
     Save: { ko: '다운로드', en: 'Download' },
     Clear: { ko: '전부 지우기', en: 'Clear all' },
+    'New song': { ko: '새로 만들기', en: 'New song' },
     'Previous example': { ko: '이전 곡', en: 'Previous' },
     'Next example': { ko: '다음 곡', en: 'Next' }
   };
   const tooltip = tooltipLabels[label];
   button.dataset.tooltip = tooltip?.[currentLanguage] || label;
+  if (label === 'New song') button.setAttribute('aria-label', tooltip[currentLanguage]);
   if (label === 'Clear') button.setAttribute('aria-label', currentLanguage === 'ko' ? '전부 지우기' : 'Clear all');
 }
 
 function syncControlButtons() {
+  setControlIcon(publishedNewSongButton, 'plus', 'New song');
+  if (publishedNewSongButton) publishedNewSongButton.hidden = !isPublishedLocked;
   setControlIcon(playButton, isPlaying ? 'pause' : 'play', isPlaying ? 'Pause' : 'Play');
   setControlIcon(saveButton, isExampleMode ? 'prev' : 'save', isExampleMode ? 'Previous example' : 'Save');
   setControlIcon(clearButton, isExampleMode ? 'next' : 'clear', isExampleMode ? 'Next example' : 'Clear');
@@ -6686,6 +6695,10 @@ composePublishButton?.addEventListener('click', () => {
 });
 mySongsToggle?.addEventListener('click', toggleMySongsPanel);
 newSongButton?.addEventListener('click', startNewSong);
+publishedNewSongButton?.addEventListener('click', () => {
+  startNewSong();
+  playButton.focus({ preventScroll: true });
+});
 savedSongsTab?.addEventListener('click', () => setMySongsFilter('saved'));
 publishedSongsTab?.addEventListener('click', () => setMySongsFilter('published'));
 clearButton.addEventListener('click', () => {
@@ -7276,6 +7289,7 @@ function playArchiveSong(id) {
 }
 
 function renderArchivePlayer() {
+  syncArchivePlayerLayout();
   const host = document.getElementById('archivePlayer');
   if (!host) return;
   const item = archivePlayerActive && archiveItems.find(entry => String(entry.id) === String(archivePreviewItemId));
@@ -7549,3 +7563,37 @@ function attachDialogCursor(dialog) {
     }
   }, {once:true});
 }
+
+
+// Keep a placeholder in the document while docking the same live player.
+function syncArchivePlayerLayout() {
+  if (archiveLayoutFrame) return;
+  archiveLayoutFrame = requestAnimationFrame(() => {
+    archiveLayoutFrame = 0;
+    const view = document.getElementById('archiveView');
+    const slot = document.getElementById('archivePlayerSlot');
+    const player = document.getElementById('archivePlayer');
+    const wide = matchMedia('(min-width: 768px) and (hover: hover) and (pointer: fine), (min-width: 768px) and (orientation: landscape)').matches;
+    view.dataset.playerLayout = 'split';
+    if (wide || !archivePlayerActive || document.body.dataset.view !== 'archive' || !player.classList.contains('has-song')) {
+      player.classList.remove('is-scroll-docked');
+      slot.style.height = '';
+      return;
+    }
+    const headerHeight = document.querySelector('.site-header').getBoundingClientRect().height;
+    if (!player.classList.contains('is-scroll-docked')) {
+      slot.style.height = '';
+      slot.dataset.height = String(slot.getBoundingClientRect().height);
+      slot.dataset.discBottom = String(player.querySelector('.archive-turntable').getBoundingClientRect().bottom - slot.getBoundingClientRect().top);
+    }
+    const dock = slot.getBoundingClientRect().top + Number(slot.dataset.discBottom) <= headerHeight;
+    slot.style.height = dock ? slot.dataset.height + 'px' : '';
+    player.classList.toggle('is-scroll-docked', dock);
+  });
+}
+window.addEventListener('scroll', syncArchivePlayerLayout, { passive: true, capture: true });
+window.addEventListener('resize', () => {
+  document.getElementById('archivePlayer').classList.remove('is-scroll-docked');
+  document.getElementById('archivePlayerSlot').style.height = '';
+  syncArchivePlayerLayout();
+}, { passive: true });
