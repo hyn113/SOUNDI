@@ -1,6 +1,6 @@
 (() => {
   const mobile = matchMedia('(width < 768px)');
-  const compactNavigation = matchMedia('(width < 640px)');
+  const compactNavigation = matchMedia('(width < 1024px)');
   const header = document.querySelector('.site-header');
   const nav = document.getElementById('primaryNavigation');
   const toggle = document.getElementById('mobileMenuToggle');

@@ -491,7 +491,7 @@ const translations = {
     hapticInfoTitle: '햅틱으로 음악을 느껴보세요.',
     hapticInfoBody: '음악을 재생하면 리듬과 화음을 햅틱으로 함께 느낄 수 있어요.',
     hapticConnectTitle: '기기를 연결해주세요.',
-    hapticConnectBody: 'iPhone에서 Soundi App을 실행하면 같은 네트워크의 기기를 자동으로 찾아요.',
+    hapticConnectBody: 'iPhone에서 SOUNDI App을 실행하면 같은 네트워크의 기기를 자동으로 찾아요.',
     importExampleButton: '내 곡으로 가져오기',
     aiPromptLabel: '만들고 싶은 곡',
     aiPromptPlaceholder: '예: 비 오는 날 조용한 피아노 음악',
@@ -515,7 +515,7 @@ const translations = {
     unpublish: '게시 취소', duplicate: '복제', deleteQuestion: '삭제할까요?', view: '보기', guest: '게스트',
     pairingInvalid: '6자리 연결 코드를 입력해주세요.', pairingConnecting: 'iPhone에 연결하고 있어요…',
     pairingConnected: 'iPhone과 연결했어요.', pairingFailed: '연결하지 못했어요. IP와 같은 Wi-Fi를 확인해주세요.',
-    middle: '중간', dashboardSubtitle: 'Soundi의 이용 현황을 한눈에 확인하세요.',
+    middle: '중간', dashboardSubtitle: 'SOUNDI의 이용 현황을 한눈에 확인하세요.',
     loginDescription: 'Google 계정으로 간편하게 시작하세요.', continueGoogle: 'Google로 계속하기', admin: '관리자',
     adminLogin: '관리자 로그인', adminPassword: '관리자 비밀번호', passwordPlaceholder: '비밀번호 입력', login: '로그인', scrollHint: '아래로<br />스크롤해 주세요'
   },
@@ -565,7 +565,7 @@ const translations = {
     hapticInfoTitle: 'Feel music through haptics.',
     hapticInfoBody: 'When you play your music, rhythm and harmony can be felt through haptic feedback.',
     hapticConnectTitle: 'Connect a device.',
-    hapticConnectBody: 'Open the Soundi App on your iPhone and Soundi will find it automatically on the same network.',
+    hapticConnectBody: 'Open the SOUNDI App on your iPhone and SOUNDI will find it automatically on the same network.',
     importExampleButton: 'Import to my song',
     aiPromptLabel: 'What you want to make',
     aiPromptPlaceholder: 'e.g. quiet piano music on a rainy day',
@@ -589,7 +589,7 @@ const translations = {
     unpublish: 'Unpublish', duplicate: 'Duplicate', deleteQuestion: 'Delete this song?', view: 'View', guest: 'Guest',
     pairingInvalid: 'Enter the 6-digit connection code.', pairingConnecting: 'Connecting to your iPhone…',
     pairingConnected: 'Connected to your iPhone.', pairingFailed: 'Could not connect. Check the IP address and Wi-Fi network.',
-    middle: 'Middle', dashboardSubtitle: 'See Soundi usage at a glance.',
+    middle: 'Middle', dashboardSubtitle: 'See SOUNDI usage at a glance.',
     loginDescription: 'Get started with your Google account.', continueGoogle: 'Continue with Google', admin: 'Administrator',
     adminLogin: 'Administrator login', adminPassword: 'Administrator password', passwordPlaceholder: 'Enter password', login: 'Log in', scrollHint: 'please<br />scroll'
   }
@@ -951,7 +951,7 @@ themeMenuButton?.addEventListener('click', () => {
 });
 
 document.addEventListener('click', (event) => {
-  if (matchMedia('(width < 640px)').matches && event.target.closest('.site-header')) return;
+  if (matchMedia('(width < 1024px)').matches && event.target.closest('.site-header')) return;
   if (userMenu) userMenu.hidden = true;
   if (themePicker) themePicker.hidden = true;
   userStatusButton?.setAttribute('aria-expanded', 'false');
@@ -2288,11 +2288,11 @@ function getHapticUiCopy() {
     connected: isKo ? 'Connected' : 'Connected',
     searching: isKo ? '기기를 찾고 있어요…' : 'Searching for a device…',
     unavailable: isKo
-      ? '연결 가능한 기기가 없어요. iPhone에서 Soundi App을 실행해주세요.'
-      : 'No available device. Open the Soundi App on your iPhone.',
+      ? '연결 가능한 기기가 없어요. iPhone에서 SOUNDI App을 실행해주세요.'
+      : 'No available device. Open the SOUNDI App on your iPhone.',
     connectedMessage: isKo
-      ? 'Soundi App과 연결되었어요. 재생하면 햅틱도 함께 시작돼요.'
-      : 'Connected to the Soundi App. Haptics will start when you play your music.'
+      ? 'SOUNDI App과 연결되었어요. 재생하면 햅틱도 함께 시작돼요.'
+      : 'Connected to the SOUNDI App. Haptics will start when you play your music.'
   };
 }
 
@@ -2307,7 +2307,7 @@ function renderHapticStatus() {
     hapticDeviceRow.hidden = !soundiHapticStatus.connected;
   }
   if (hapticDeviceName && soundiHapticStatus.connected) {
-    hapticDeviceName.textContent = soundiHapticStatus.deviceName || 'Soundi App';
+    hapticDeviceName.textContent = soundiHapticStatus.deviceName || 'SOUNDI App';
   }
   if (hapticConnectMessage) {
     hapticConnectMessage.textContent = soundiHapticStatus.connected
@@ -5853,7 +5853,7 @@ function setView(viewName) {
   if (wasCompose && nextView !== 'compose') stopComposeTimeTracking();
   document.body.dataset.view = nextView;
   const accountArea = document.getElementById('userStatusArea');
-  const accountParent = window.matchMedia('(width < 640px)').matches
+  const accountParent = window.matchMedia('(width < 1024px)').matches
     ? document.getElementById('primaryNavigation')
     : nextView === 'compose'
     ? document.querySelector('.compose-publish-controls')
