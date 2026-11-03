@@ -9534,3 +9534,11 @@ html[data-theme="dark"] .dashboard-modal {
 }
 
 button, input, select, textarea { font-family: "SUIT", sans-serif; }
+.esp32-controls { display: grid; gap: 12px; padding-bottom: 16px; margin-bottom: 12px; border-bottom: 1px solid rgba(128,128,128,.25); }
+.esp32-controls p { margin: 0; }
+.esp32-gain { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.esp32-gain input { width: 100%; }
+.esp32-motor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.esp32-controls details summary { cursor: pointer; }
+.esp32-controls details p { margin-top: 10px; }
+.haptic-connect-popover { max-height: min(680px, 75vh); overflow-y: auto; }

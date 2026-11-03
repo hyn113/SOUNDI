@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SOUNDI 좌우 쌍 비교</title>
+<style>body{font:18px/1.6 system-ui;max-width:760px;margin:32px auto;padding:20px;background:#faf9f6;color:#222}button,select{font:inherit;padding:12px;margin:5px;border:1px solid #aaa;border-radius:12px;background:white}#esp32Stop{background:#222;color:white}.pairs{display:grid;gap:8px}output{display:block}#esp32Diagnostics{font-size:14px}#now{font-weight:bold}</style>
+<main id="composeView"><h1>좌우 모터 쌍 비교</h1><p>손가락 쪽이 위, 다이얼·몸 쪽이 아래입니다. 다른 사이트의 재생을 정지하고 블루투스 연결을 해제한 뒤 여기서 연결하세요.</p>
+<section class="haptic-status-ui"><button id="esp32Connect">SOUNDI-8 블루투스 연결</button><p id="esp32Status">연결 대기</p><output id="esp32Preview"></output><label>전체 세기 <input id="esp32Gain" type="range" min="0" max="100" value="100"><span id="esp32GainValue">100%</span></label><button id="esp32Stop">즉시 정지</button></section>
+<p>비교 세기 <select id="level"><option value="0.7">단음 70%</option><option value="0.85">두 음 85%</option><option value="1">최대 100%</option></select></p>
+<div class="pairs"><button data-pair="0">맨 위 1 + 5 · 동시에 2초</button><button data-pair="1">2 + 6 · 동시에 2초</button><button data-pair="2">3 + 7 · 동시에 2초</button><button data-pair="3">맨 아래 4 + 8 · 동시에 2초</button></div>
+<button id="allPairs">네 쌍 순서대로 · 12초</button><p id="now" role="status">연결 후 비교할 쌍을 누르세요.</p><p>현재 보정: 5번 100%, 6번 97%, 7번 65%, 8번 87%. 선택한 세기·전체 세기·다이얼이 함께 적용됩니다. 표시값은 출력 명령이며 실제 진동 측정값은 아닙니다.</p></main>
+<script src="esp32-haptics.js?v=20261029-softpeaks-18"></script><script src="pair-motor-test.js?v=1"></script></html>

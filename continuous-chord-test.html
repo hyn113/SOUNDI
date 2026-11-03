@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SOUNDI 연속 화음 패턴 테스트</title>
+<style>body{font:18px/1.6 system-ui;max-width:760px;margin:32px auto;padding:20px;background:#faf9f6;color:#222}button,select{font:inherit;padding:12px;margin:5px;border:1px solid #aaa;border-radius:12px;background:white}#esp32Stop{background:#222;color:white}.pairs{display:grid;gap:8px}output{display:block}#esp32Diagnostics{font-size:14px}#now{font-weight:bold}</style>
+<main id="composeView"><h1>연속 화음 패턴 테스트</h1><p>손가락 쪽이 위, 다이얼·몸 쪽이 아래입니다. 다른 사이트의 재생을 정지하고 블루투스 연결을 해제한 뒤 여기서 연결하세요.</p>
+<section class="haptic-status-ui"><button id="esp32Connect">SOUNDI-8 블루투스 연결</button><p id="esp32Status">연결 대기</p><output id="esp32Preview"></output><label>전체 세기 <input id="esp32Gain" type="range" min="0" max="100" value="100"><span id="esp32GainValue">100%</span></label><button id="esp32Stop">즉시 정지</button></section>
+<h2>현재 곡에 적용되는 화음 강약 패턴 7종</h2><p>같은 위치(3·7번), 같은 기본 세기 85%로 비교합니다. 각 패턴은 5초간 강약을 유지하고, 다음 패턴 전에 2초 완전히 쉽니다.</p>
+<button id="runAll">7종 순서대로 · 49초</button>
+<button data-texture="0">① 장3도</button><button data-texture="1">② 단3도</button><button data-texture="2">③ 완전5도</button><button data-texture="3">④ sus2</button><button data-texture="4">⑤ sus4</button><button data-texture="5">⑥ 장7화음</button><button data-texture="6">⑦ 기타 음 조합</button>
+<p id="now" role="status">연결 후 순차 테스트를 누르세요.</p><p>바탕 진동은 해당 세기의 65%, 강조 진동은 85%로 강약 폭을 줄였습니다. 비교에서는 모두 85%로 고정하며 모터별 보정과 다이얼은 적용됩니다. 실제 곡에서는 음 개수에 따른 70·85·100%를 유지합니다. 화면의 출력 명령은 실제 진동 측정값이 아닙니다.</p></main>
+<script src="esp32-haptics.js?v=20261029-softpeaks-18"></script><script src="continuous-chord-test.js?v=2"></script></html>

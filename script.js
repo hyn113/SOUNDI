@@ -59,14 +59,14 @@ const intervalLabels = {
 };
 
 const HAPTIC_CHORD_MAP = {
-  single: { label: 'Single Note', intensity: 0.40, sharpness: 0.35, pattern: 'sustained' },
-  major3: { label: 'Major 3rd', intensity: 0.50, sharpness: 0.35, pattern: 'sustained' },
-  minor3: { label: 'Minor 3rd', intensity: 0.45, sharpness: 0.25, pattern: 'sustained' },
-  perfect5: { label: 'Perfect 5th', intensity: 0.70, sharpness: 0.30, pattern: 'sustained' },
-  sus2: { label: 'Sus2', intensity: 0.58, sharpness: 0.50, pattern: 'slowWave' },
-  sus4: { label: 'Sus4', intensity: 0.62, sharpness: 0.60, pattern: 'slowWave' },
-  major7: { label: 'Major 7th', intensity: 0.50, sharpness: 0.62, pattern: 'finePulse' },
-  strongTension: { label: 'Strong Tension', intensity: 0.70, sharpness: 0.90, pattern: 'densePulse' }
+  single: { label: 'Single Note', intensity: 0.75, sharpness: 0.35, pattern: 'sustained' },
+  major3: { label: 'Major 3rd', intensity: 0.85, sharpness: 0.35, pattern: 'chordMajor3' },
+  minor3: { label: 'Minor 3rd', intensity: 0.80, sharpness: 0.25, pattern: 'chordMinor3' },
+  perfect5: { label: 'Perfect 5th', intensity: 1.00, sharpness: 0.30, pattern: 'chordPerfect5' },
+  sus2: { label: 'Sus2', intensity: 0.85, sharpness: 0.50, pattern: 'chordSus2' },
+  sus4: { label: 'Sus4', intensity: 0.90, sharpness: 0.60, pattern: 'chordSus4' },
+  major7: { label: 'Major 7th', intensity: 0.90, sharpness: 0.62, pattern: 'chordMajor7' },
+  strongTension: { label: 'Strong Tension', intensity: 1.00, sharpness: 0.90, pattern: 'chordTension' }
 };
 
 const noteColors = {
@@ -2156,6 +2156,11 @@ function hasPitchClassShape(pitchClasses, intervals) {
 }
 
 function classifyHapticChord(items) {
+  if (window.SoundiHapticStructure) {
+    const structure=window.SoundiHapticStructure(items.map(getCompositionItemMidi).filter(Number.isFinite));
+    const types={sustained:'single',chordMajor3:'major3',chordMinor3:'minor3',chordPerfect5:'perfect5',chordSus2:'sus2',chordSus4:'sus4',chordMajor7:'major7',chordTension:'strongTension'};
+    return types[structure?.pattern] || 'single';
+  }
   const pitchClasses = getPitchClassesFromItems(items);
 
   if (pitchClasses.length <= 1) return 'single';
@@ -2180,6 +2185,7 @@ function getHapticStateAtStep(step) {
   const mapping = HAPTIC_CHORD_MAP[chordType] || HAPTIC_CHORD_MAP.strongTension;
   return {
     chordType,
+    pitches: [...new Set(soundingItems.map(getCompositionItemMidi).filter(Number.isFinite))].sort((a,b)=>a-b),
     label: mapping.label,
     intensity: mapping.intensity,
     sharpness: mapping.sharpness,
@@ -2189,7 +2195,7 @@ function getHapticStateAtStep(step) {
 
 function getHapticStateKey(state) {
   if (!state) return 'silence';
-  return [state.chordType, state.intensity, state.sharpness, state.pattern].join(':');
+  return [state.chordType, state.intensity, state.sharpness, state.pattern, state.pitches.join(",")].join(':');
 }
 
 function buildHapticEventsFromComposition() {
@@ -2221,6 +2227,7 @@ function buildHapticEventsFromComposition() {
       startTime: (step - loopBounds.start) * secondsPerStep,
       duration: secondsPerStep,
       chordType: state.chordType,
+      pitches: state.pitches.slice(),
       chordLabel: state.label,
       intensity: state.intensity,
       sharpness: state.sharpness,
@@ -2231,7 +2238,14 @@ function buildHapticEventsFromComposition() {
 
   if (activeEvent) events.push(activeEvent);
 
+  const songPitches = composition.map(getCompositionItemMidi).filter(Number.isFinite);
+  const pitchRange = songPitches.length ? [Math.min(...songPitches), Math.max(...songPitches)] : null;
   return events.map(({ _stateKey, ...event }) => ({
+    pitchRange,
+    structureMapping: true,
+    onsetAccent: false,
+    playbackDuration: (loopBounds.end - loopBounds.start) * secondsPerStep,
+    playbackOffset: 0,
     ...event,
     startTime: Number(event.startTime.toFixed(4)),
     duration: Number(event.duration.toFixed(4))
@@ -2301,6 +2315,15 @@ function getHapticUiCopy() {
 
 function renderHapticStatus() {
   if (!hapticStatusUi || !hapticStatusText) return;
+
+  if (window.SoundiESP32?.connected) {
+    hapticStatusUi.classList.add('is-connected');
+    hapticStatusText.textContent = 'Connected';
+    if (hapticDeviceRow) hapticDeviceRow.hidden = false;
+    if (hapticDeviceName) hapticDeviceName.textContent = 'SOUNDI-8 · Bluetooth';
+    if (hapticConnectMessage) hapticConnectMessage.textContent = '음악을 재생하면 SOUNDI-8에서 진동이 함께 시작돼요.';
+    return;
+  }
 
   const copy = getHapticUiCopy();
   hapticStatusUi.classList.toggle('is-connected', soundiHapticStatus.connected);
@@ -2456,6 +2479,8 @@ soundiHapticStatusTimer = window.setInterval(() => {
 }, 4000);
 
 let hapticRequestQueue = Promise.resolve();
+window.addEventListener?.('soundi-esp32-status', () => { void refreshSoundiHapticStatus(); });
+window.addEventListener?.('soundi-esp32-test', () => { if (isPlaying) stopPlayback(); });
 let playbackStepDeadline = 0;
 function queueHapticRequest(url, options) {
   const request = hapticRequestQueue.then(() => fetch(url, {
@@ -2470,9 +2495,14 @@ async function sendSoundiHapticsToActiveDevice(startAt, fromStep = getLoopBounds
   const events = buildHapticEventsFromComposition()
     .filter(event => event.startTime + event.duration > offset)
     .map(event => ({...event,
+      ...(Number.isFinite(event.playbackDuration) ? {playbackOffset: offset} : {}),
       startTime: Math.max(0, event.startTime - offset),
       duration: event.duration - Math.max(0, offset - event.startTime)
     }));
+  if (window.SoundiESP32) {
+    const sent = window.SoundiESP32.play(events, startAt);
+    if (window.SoundiESP32.connected) return sent;
+  }
   if (!events.length) return false;
 
   try {
@@ -2502,6 +2532,10 @@ async function sendSoundiHapticsToActiveDevice(startAt, fromStep = getLoopBounds
 }
 
 async function stopSoundiHapticsOnActiveDevice() {
+  if (window.SoundiESP32) {
+    window.SoundiESP32.stop();
+    if (window.SoundiESP32.connected) return true;
+  }
   try {
     const response = await queueHapticRequest('/api/haptics/stop', {
       method: 'POST'
@@ -4258,7 +4292,9 @@ function schedulePlaybackStart(generation) {
   const leadMs = 1000;
   playbackStartStep = playStep;
   playbackStepDeadline = performance.now() + leadMs;
-  void sendSoundiHapticsToActiveDevice((Date.now() + leadMs) / 1000, playStep);
+  // Trial compensation for BLE transport and coin-motor spin-up; audio deadline stays unchanged.
+  const hapticAdvanceMs = 100;
+  void sendSoundiHapticsToActiveDevice((Date.now() + leadMs - hapticAdvanceMs) / 1000, playStep);
   playTimer = window.setTimeout(() => {
     if (!isPlaying || generation !== playbackGeneration) return;
     tickPlayback();

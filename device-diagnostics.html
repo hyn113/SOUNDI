@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOUNDI 보드 상태 확인</title>
+<style>body{font:18px/1.7 system-ui;max-width:850px;margin:48px auto;padding:24px;background:#faf9f6;color:#222}button{font:inherit;padding:10px 18px;margin:6px;border:1px solid #777;border-radius:8px;background:white}output,p{display:block;overflow-wrap:anywhere}#esp32Diagnostics{padding:20px;background:#eee;border-radius:12px}input{width:200px}</style>
+<main id="composeView"><h1>SOUNDI 보드 상태 확인</h1><p>먼저 외부 스위치를 OFF로 두고 연결하세요. 상태 확인만으로는 모터가 울리지 않습니다.</p>
+<section class="haptic-status-ui"><button id="esp32Connect">SOUNDI-8 블루투스 연결</button><p id="esp32Status">연결 대기</p><output id="esp32Preview"></output>
+<label>사이트 진동 세기 <input id="esp32Gain" type="range" min="0" max="100" value="60"><span id="esp32GainValue">60%</span></label>
+<p>다이얼을 돌릴 때 보드 상태의 다이얼 값이 바뀌는지 확인하세요. 출력 명령은 실제 진동 측정값이 아닙니다.</p>
+<button data-motor-test="0" disabled>왼쪽 1번 · 0.6초 테스트</button><button id="esp32Stop">진동 모두 정지</button></section></main>
+<script src="esp32-haptics.js?v=20261029-softpeaks-18"></script></html>

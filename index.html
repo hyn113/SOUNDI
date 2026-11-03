@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@kfonts/line-seed-sans-kr@0.1.0/index.css" />
-  <link rel="stylesheet" href="style.css?v=20261025-slower-record" />
+  <link rel="stylesheet" href="style.css?v=20261103-haptics" />
   <link rel="stylesheet" href="responsive.css?v=20261025-menu-order" />
   <link rel="stylesheet" href="lesson-layout.css?v=20261023-v10-release-2" />
   <link rel="stylesheet" href="archive-layout.css?v=20261025-dock-large-disc" />
@@ -407,6 +407,33 @@
 
                 <div id="hapticConnectPopover" class="haptic-popover haptic-connect-popover" hidden>
                   <strong id="hapticConnectTitle" data-i18n="hapticConnectTitle">기기를 연결해주세요.</strong>
+                  <section class="esp32-controls" aria-label="SOUNDI 8모터 무선 연결">
+                    <strong>iMac 전시 설정 · SOUNDI-8</strong>
+                    <p>연결 → 모터 테스트 → 진동 세기 조절 → 곡 재생 순서로 준비하세요.</p>
+                    <button id="esp32Connect" class="haptic-manual-button" type="button">SOUNDI-8 블루투스 연결</button>
+                    <p id="esp32Status" role="status">iMac의 Chrome에서 연결을 누르고 SOUNDI-8을 선택해주세요.</p>
+                    <p>곡의 출력 미리보기 · 1번 → 8번 (모터의 실제 진동 측정값은 아닙니다)</p>
+                    <output id="esp32Preview">미연결 · 계산값: 0% / 0% / 0% / 0% / 0% / 0% / 0% / 0%</output>
+                    <label class="esp32-gain" for="esp32Gain">진동 세기 <output id="esp32GainValue">60%</output>
+                      <input id="esp32Gain" type="range" min="0" max="100" value="60" />
+                    </label>
+                    <details open>
+                      <summary>모터 테스트 · 1–8번 개별 및 오른쪽 4개</summary>
+                      <p>곡 안의 최저음은 몸 쪽 4·8번, 최고음은 먼 쪽 1·5번에서 울려요. 중간 음역은 3·7번과 2·6번으로 나뉘며, 화음은 동시에 울리는 음들의 중심 높이 한 쌍에서 울려요. 음 개수는 세기, 음정 관계는 질감으로 표현해요.</p>
+                      <div class="esp32-motor-grid">
+                        <button type="button" class="haptic-manual-button" data-motor-test-channels="4,5,6,7" disabled>오른쪽 4개 함께</button>
+                        <button type="button" class="haptic-manual-button" data-motor-test="0" disabled>1번</button>
+                        <button type="button" class="haptic-manual-button" data-motor-test="1" disabled>2번</button>
+                        <button type="button" class="haptic-manual-button" data-motor-test="2" disabled>3번</button>
+                        <button type="button" class="haptic-manual-button" data-motor-test="3" disabled>4번</button>
+                        <button type="button" class="haptic-manual-button" data-motor-test="4" disabled>5번</button>
+                        <button type="button" class="haptic-manual-button" data-motor-test="5" disabled>6번</button>
+                        <button type="button" class="haptic-manual-button" data-motor-test="6" disabled>7번</button>
+                        <button type="button" class="haptic-manual-button" data-motor-test="7" disabled>8번</button>
+                      </div>
+                    </details>
+                    <button id="esp32Stop" class="haptic-manual-button" type="button">진동 모두 정지</button>
+                  </section>
                   <p id="hapticConnectMessage" data-i18n="hapticConnectBody">iPhone에서 SOUNDI App을 실행하면 같은 네트워크의 기기를 자동으로 찾아요.</p>
                   <div id="hapticDeviceRow" class="haptic-device-row" hidden>
                     <span class="haptic-device-dot" aria-hidden="true"></span>
@@ -662,7 +689,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
   <script src="music-analysis.js?v=20261023-v10-release-2"></script>
-  <script src="script.js?v=20261025-auto-dock"></script>
+  <script src="esp32-haptics.js?v=20261103-haptics"></script>
+  <script src="script.js?v=20261103-haptics"></script>
   <script src="privacy-account.js?v=20261023-v10-release-2"></script>
   <script src="mobile-ui.js?v=20261025-menu-order"></script>
   <script src="lesson-layout.js?v=20261023-v10-release-2"></script>
