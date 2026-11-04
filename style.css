@@ -9555,3 +9555,23 @@ button, input, select, textarea { font-family: "SUIT", sans-serif; }
 .esp32-controls { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
 .haptic-admin-tests { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--hairline); }
 #esp32Status { font-size: 12px; line-height: 1.5; }
+
+.save-confirmation {
+  position: fixed;
+  top: max(24px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11000;
+  max-width: calc(100vw - 32px);
+  padding: 13px 22px;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .14);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+}
+.save-confirmation[hidden] { display: none; }

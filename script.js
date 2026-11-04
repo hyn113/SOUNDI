@@ -5256,6 +5256,23 @@ function setMySongsFilter(filter) {
   renderMySongs();
 }
 
+let saveConfirmationTimer = null;
+function showSaveConfirmation() {
+  let notice = document.getElementById('saveConfirmation');
+  if (!notice) {
+    notice = document.createElement('div');
+    notice.id = 'saveConfirmation';
+    notice.className = 'save-confirmation';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('aria-live', 'polite');
+    document.body.appendChild(notice);
+  }
+  window.clearTimeout(saveConfirmationTimer);
+  notice.textContent = currentLanguage === 'ko' ? '저장이 완료됐어요.' : 'Your song has been saved.';
+  notice.hidden = false;
+  saveConfirmationTimer = window.setTimeout(() => { notice.hidden = true; }, 2600);
+}
+
 async function saveComposition(cover = draftCover, { silentSaveFeedback = false } = {}) {
   if (!composition.length || currentUser?.role !== 'general') {
     if (!silentSaveFeedback) flashControl(saveButton);
@@ -5324,7 +5341,10 @@ async function saveComposition(cover = draftCover, { silentSaveFeedback = false 
   mySongItems.unshift(savedItem);
   renderMySongs();
 
-  if (!silentSaveFeedback) flashControl(saveButton);
+  if (!silentSaveFeedback) {
+    flashControl(saveButton);
+    showSaveConfirmation();
+  }
   await loadMySongs();
   renderMySongs();
   syncComposePublishButton();
@@ -6666,7 +6686,7 @@ function setControlIcon(button, iconName, label) {
   const tooltipLabels = {
     Play: { ko: '재생', en: 'Play' },
     Pause: { ko: '일시정지', en: 'Pause' },
-    Save: { ko: '다운로드', en: 'Download' },
+    Save: { ko: '저장하기', en: 'Save' },
     Clear: { ko: '전부 지우기', en: 'Clear all' },
     'New song': { ko: '새로 만들기', en: 'New song' },
     'Previous example': { ko: '이전 곡', en: 'Previous' },
@@ -6674,7 +6694,7 @@ function setControlIcon(button, iconName, label) {
   };
   const tooltip = tooltipLabels[label];
   button.dataset.tooltip = tooltip?.[currentLanguage] || label;
-  if (label === 'New song') button.setAttribute('aria-label', tooltip[currentLanguage]);
+  if (label === 'New song' || label === 'Save') button.setAttribute('aria-label', tooltip[currentLanguage]);
   if (label === 'Clear') button.setAttribute('aria-label', currentLanguage === 'ko' ? '전부 지우기' : 'Clear all');
 }
 
