@@ -9549,3 +9549,9 @@ button, input, select, textarea { font-family: "SUIT", sans-serif; }
 .ai-revision-button[hidden] { display: none; }
 .ai-revision-button { flex-shrink: 0; white-space: nowrap; }
 .ai-revision-button[aria-pressed="true"] { color: var(--ink); border-color: currentColor; }
+
+/* Compact Bluetooth connection; individual motor checks are for administrators. */
+.haptic-legacy-controls[hidden], .haptic-admin-tests[hidden] { display: none; }
+.esp32-controls { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
+.haptic-admin-tests { display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--hairline); }
+#esp32Status { font-size: 12px; line-height: 1.5; }

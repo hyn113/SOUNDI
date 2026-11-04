@@ -736,6 +736,8 @@ function saveUserSession(user) {
 }
 
 function updateUserStatus() {
+  const adminTests = document.getElementById('hapticAdminTests');
+  if (adminTests) adminTests.hidden = currentUser?.role !== 'admin';
   if (!currentUser) return;
   if (userStatusArea) userStatusArea.hidden = false;
   if (userStatusName) userStatusName.textContent = currentUser.nickname;
@@ -926,6 +928,7 @@ async function initializeAuthSession() {
   }
 
   currentUser = null;
+  updateUserStatus();
   currentUserId = null;
   openLoginModal();
 }
@@ -1779,6 +1782,7 @@ logoutButton?.addEventListener('click', async () => {
 
   localStorage.removeItem(USER_SESSION_KEY);
   currentUser = null;
+  updateUserStatus();
   currentUserId = null;
   currentSongId = null;
   mySongItems = [];
