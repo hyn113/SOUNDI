@@ -6134,9 +6134,18 @@ function initScrollReveals() {
   revealItems.forEach((item) => observer.observe(item));
 }
 
+function getHomeSectionPositions(scrollRoot, sections) {
+  const maxScroll = Math.max(0, scrollRoot.scrollHeight - scrollRoot.clientHeight);
+  return sections.map(section => {
+    let top = 0;
+    for (let node = section; node && node !== scrollRoot; node = node.offsetParent) top += node.offsetTop || 0;
+    return Math.min(maxScroll, Math.max(0, Math.round(top)));
+  });
+}
+
 function initSoftSectionScroll() {
   const getScrollRoot = () => document.querySelector('#homeView.is-active');
-  const getSections = () => [...document.querySelectorAll('#homeView.is-active .reveal')];
+  const getSections = () => [...document.querySelectorAll('#homeView.is-active > .hero, #homeView.is-active .tutorial > .reveal')];
   let wheelIntent = 0;
   let wheelIntentTimer = 0;
   let wheelLockUntil = 0;
@@ -6174,9 +6183,10 @@ function initSoftSectionScroll() {
 
     if (Math.abs(wheelIntent) < intentThreshold) return;
 
-    const positions = sections.map((_, index) => Math.round(sectionHeight * index));
+    const positions = getHomeSectionPositions(scrollRoot, sections);
     const currentY = scrollRoot.scrollTop;
-    const currentIndex = Math.min(sections.length - 1, Math.max(0, Math.round(currentY / sectionHeight)));
+    const currentIndex = positions.reduce((closest, position, index) =>
+      Math.abs(position - currentY) < Math.abs(positions[closest] - currentY) ? index : closest, 0);
 
     const direction = wheelIntent > 0 ? 1 : -1;
     const nextIndex = Math.min(sections.length - 1, Math.max(0, currentIndex + direction));
