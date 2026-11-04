@@ -2514,13 +2514,16 @@ async function sendSoundiHapticsToActiveDevice(startAt, fromStep = getLoopBounds
     if (window.SoundiESP32.connected) return sent;
   }
   if (!events.length) return false;
+  if (window.SoundiPhoneHaptics?.supported) {
+    return window.SoundiPhoneHaptics.play(events, startAt, buildSoundiVisualPlayback());
+  }
 
   try {
     const response = await queueHapticRequest('/api/haptics/play', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        events,
+        events: window.SoundiPhoneHaptics?.nativeEvents(events) || events,
         startAt,
         visual: buildSoundiVisualPlayback()
       })
@@ -2542,10 +2545,12 @@ async function sendSoundiHapticsToActiveDevice(startAt, fromStep = getLoopBounds
 }
 
 async function stopSoundiHapticsOnActiveDevice() {
+  const phoneStopped = window.SoundiPhoneHaptics?.supported ? window.SoundiPhoneHaptics.stop() : false;
   if (window.SoundiESP32) {
     window.SoundiESP32.stop();
     if (window.SoundiESP32.connected) return true;
   }
+  if (phoneStopped) return true;
   try {
     const response = await queueHapticRequest('/api/haptics/stop', {
       method: 'POST'
