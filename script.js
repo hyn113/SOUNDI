@@ -5636,7 +5636,10 @@ async function publishCoverComposition() {
       updateTitleDisplay();
     }
     draftCover = normalizeCover(draftCover);
-    if (await publishCurrentComposition()) closeCoverModal();
+    if (await publishCurrentComposition()) {
+      closeCoverModal();
+      setView('archive');
+    }
   } finally {
     compositionPublishPending = false;
     if (publishCoverButton) publishCoverButton.disabled = false;
