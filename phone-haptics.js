@@ -47,8 +47,8 @@
       const active = events.find(e=>e.intensity>0 && elapsed>=e.startTime && elapsed<e.startTime+e.duration);
       root.navigator.vibrate(active ? Math.max(1, Math.min(250,Math.round((active.startTime+active.duration-elapsed)*1000))) : 0);
     };
-    tick();
     timer = root.setInterval(tick,100);
+    tick();
     return true;
   }
   const api = {nativeEvents, play, stop, get native(){return Boolean(handler());},
