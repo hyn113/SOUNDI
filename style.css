@@ -9544,3 +9544,8 @@ button, input, select, textarea { font-family: "SUIT", sans-serif; }
 @media (pointer:coarse) { .ai-work-cursor { display:none; } }
 
 .ai-change-summary,.ai-feedback-ready {font-size:12px;line-height:1.7;padding:10px 12px;border:1px solid var(--hairline,#ddd);border-radius:8px;color:var(--ink,#222);}
+
+/* AI revision comparison sits immediately before the zoom controls. */
+.ai-revision-button[hidden] { display: none; }
+.ai-revision-button { flex-shrink: 0; white-space: nowrap; }
+.ai-revision-button[aria-pressed="true"] { color: var(--ink); border-color: currentColor; }

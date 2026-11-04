@@ -294,6 +294,7 @@ let lessonStep = 0;
 let lessonTensionEnabled = true;
 let aiCoachStatus = 'idle';
 let aiApplyingEdits = false;
+let aiRevisionComparison = null;
 function setAIWorkStatus(text = '') {
   window.dispatchEvent(new CustomEvent('soundi-ai-work', {detail:{text}}));
 }
@@ -1928,6 +1929,7 @@ function handleComposeResize() {
 }
 
 function render() {
+  syncAIRevisionButton();
   const previousScrollLeft = scoreScroll?.scrollLeft || 0;
   const previousScrollTop = scoreScroll?.scrollTop || 0;
   updateGridMetrics();
@@ -2745,6 +2747,8 @@ function applyCellState(noteId, step, shouldFill) {
 }
 
 function refreshAnalysisAfterEdit() {
+  aiRevisionComparison = null;
+  syncAIRevisionButton();
   aiAnalyzeLockedUntilEdit = false;
   if (aiAnalyzeButton) aiAnalyzeButton.disabled = aiCoachStatus === 'loading';
 
@@ -3931,6 +3935,7 @@ function applyAICoachOperations() {
   if (!operations.length) return;
   if (isPlaying) stopPlayback();
   pushUndoState();
+  const beforeComposition = composition.map(item => ({ ...item }));
   const beforeKeys = new Set(composition.map(item => `${item.noteId}:${item.step}:${item.accidental || 0}`));
   lastSelectedNoteId = null;
   lastSelectedStep = null;
@@ -3947,9 +3952,55 @@ function applyAICoachOperations() {
     removed: [...beforeKeys].filter(key => !afterKeys.has(key)).length
   };
   aiCoachFeedback = {...aiCoachFeedback, applied: true, changeSummary};
+  aiRevisionComparison = {
+    before: beforeComposition,
+    after: composition.map(item => ({ ...item })),
+    songId: currentSongId,
+    stepCount: STEP_COUNT,
+    showingBefore: false
+  };
   render();
   renderAICoachResult();
   setAIWorkStatus();
+}
+
+function aiRevisionKey(items) {
+  return JSON.stringify(items.map(item => JSON.stringify(item)).sort());
+}
+
+function syncAIRevisionButton() {
+  const button = document.getElementById('aiRevisionButton');
+  if (!button) return;
+  if (aiRevisionComparison) {
+    const revision = aiRevisionComparison;
+    const expected = revision.showingBefore ? revision.before : revision.after;
+    if (revision.songId !== currentSongId || revision.stepCount !== STEP_COUNT || isExampleMode ||
+        aiRevisionKey(composition) !== aiRevisionKey(expected)) aiRevisionComparison = null;
+  }
+  button.hidden = !aiRevisionComparison;
+  const showingBefore = Boolean(aiRevisionComparison?.showingBefore);
+  button.textContent = currentLanguage === 'ko'
+    ? (showingBefore ? '수정 후' : '수정 전')
+    : (showingBefore ? 'After' : 'Before');
+  button.setAttribute('aria-pressed', String(showingBefore));
+  button.setAttribute('aria-label', currentLanguage === 'ko'
+    ? (showingBefore ? 'AI 수정 후 곡 보기' : 'AI 수정 전 곡 보기')
+    : (showingBefore ? 'Show song after AI edits' : 'Show song before AI edits'));
+}
+
+function toggleAIRevision() {
+  syncAIRevisionButton();
+  if (!aiRevisionComparison) return;
+  if (isPlaying) stopPlayback();
+  const revision = aiRevisionComparison;
+  revision.showingBefore = !revision.showingBefore;
+  composition = (revision.showingBefore ? revision.before : revision.after).map(item => ({ ...item }));
+  lastSelectedNoteId = null;
+  lastSelectedStep = null;
+  ensureOctaveRangeForComposition();
+  render();
+  syncControlButtons();
+  syncComposePublishButton();
 }
 
 function sanitizeAIOperations(operations) {
@@ -5844,6 +5895,7 @@ function setLessonTensionEnabled(enabled) {
 
 function applyLanguage(nextLanguage = currentLanguage) {
   currentLanguage = nextLanguage === 'en' ? 'en' : 'ko';
+  syncAIRevisionButton();
   document.documentElement.lang = currentLanguage;
   localStorage.setItem(LANGUAGE_STORAGE_KEY, currentLanguage);
   const dictionary = translations[currentLanguage] || translations.en;
@@ -6878,6 +6930,7 @@ scoreScroll?.addEventListener('wheel', (event) => {
   event.preventDefault();
   setComposeZoom(composeZoom + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
 }, { passive: false });
+document.getElementById('aiRevisionButton')?.addEventListener('click', toggleAIRevision);
 zoomOutButton?.addEventListener('click', () => setComposeZoom(composeZoom - ZOOM_STEP));
 zoomInButton?.addEventListener('click', () => setComposeZoom(composeZoom + ZOOM_STEP));
 resetZoomButton?.addEventListener('click', () => setComposeZoom(1));
