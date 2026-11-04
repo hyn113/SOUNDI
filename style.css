@@ -5931,6 +5931,12 @@ body.is-dashboard-open .user-status-area { z-index: 3200; }
   border-radius: 12px;
 }
 
+/* Lift the whole row so its menu paints above following song cards. */
+.my-song-item:has(.my-song-more-menu:not([hidden])),
+.my-song-item:has(.my-song-delete-popover:not([hidden])) {
+  z-index: 30;
+}
+
 .my-song-item:hover {
   background: rgba(12, 12, 12, 0.018);
 }
