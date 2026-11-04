@@ -7479,7 +7479,7 @@ html[data-theme="dark"] body.is-login-open .cursor-hint {
 /* Haptic status inside My Song Mood */
 .haptic-status-ui {
   position: absolute;
-  top: 16px;
+  top: 2px;
   right: 18px;
   z-index: 20;
   display: inline-flex;
@@ -7592,7 +7592,7 @@ html[data-theme="dark"] body.is-login-open .cursor-hint {
   }
 
   .haptic-status-ui {
-    top: 14px;
+    top: 2px;
     right: 14px;
   }
 }
