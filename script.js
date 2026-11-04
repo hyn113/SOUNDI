@@ -293,6 +293,10 @@ let lessonTrack = 'pitch';
 let lessonStep = 0;
 let lessonTensionEnabled = true;
 let aiCoachStatus = 'idle';
+let aiApplyingEdits = false;
+function setAIWorkStatus(text = '') {
+  window.dispatchEvent(new CustomEvent('soundi-ai-work', {detail:{text}}));
+}
 let aiCoachFeedback = null;
 let aiAnalyzeLockedUntilEdit = false;
 let lessonMoodIndex = 0;
@@ -2737,7 +2741,7 @@ function applyCellState(noteId, step, shouldFill) {
   }
   sortComposition();
   updateHarmonyAnchorAfterEdit(noteId, step, shouldFill, keptAnchor);
-  if (changed) refreshAnalysisAfterEdit();
+  if (changed && !aiApplyingEdits) refreshAnalysisAfterEdit();
 }
 
 function refreshAnalysisAfterEdit() {
@@ -3870,7 +3874,7 @@ function renderAICoachResult() {
   if (!aiCoachResult) return;
   if (aiCoachSource) aiCoachSource.textContent = aiCoachFeedback?.source === 'llm' ? 'llm' : 'local';
   if (aiAnalyzeButton) aiAnalyzeButton.disabled = aiCoachStatus === 'loading' || aiAnalyzeLockedUntilEdit;
-  if (aiCoachStatus === 'loading') {
+  if (aiCoachStatus === 'loading' && !aiCoachFeedback) {
     aiCoachResult.innerHTML = '';
     return;
   }
@@ -3886,6 +3890,10 @@ function renderAICoachResult() {
       ? [feedback.editPlan]
       : [];
   aiCoachResult.innerHTML = `
+    ${feedback.applied && feedback.changeSummary ? `<p class="ai-change-summary" role="status">${currentLanguage === 'ko'
+      ? `수정 완료 · 블록 ${feedback.changeSummary.added}개 추가, ${feedback.changeSummary.removed}개 삭제`
+      : `Updated · ${feedback.changeSummary.added} blocks added, ${feedback.changeSummary.removed} removed`}</p>` : ''}
+    ${aiCoachStatus === 'loading' && feedback ? `<p class="ai-feedback-ready" role="status">${currentLanguage === 'ko' ? '수정안은 준비됐어요. 지금 적용할 수 있어요.' : 'Your edits are ready to apply.'}</p>` : ''}
     <section class="ai-coach-section">
       <span class="ai-coach-section-label">${currentLanguage === 'ko' ? '현재 곡' : 'Current composition'}</span>
       <p>${escapeHtml(feedback.summary || '')}</p>
@@ -3923,18 +3931,25 @@ function applyAICoachOperations() {
   if (!operations.length) return;
   if (isPlaying) stopPlayback();
   pushUndoState();
+  const beforeKeys = new Set(composition.map(item => `${item.noteId}:${item.step}:${item.accidental || 0}`));
   lastSelectedNoteId = null;
   lastSelectedStep = null;
-  operations.forEach((operation) => {
-    applyCellState(operation.noteId, operation.step, operation.type !== 'remove');
-  });
+  setAIWorkStatus(currentLanguage === 'ko' ? '블록 수정 중…' : 'Updating blocks…');
+  aiApplyingEdits = true;
+  try {
+    operations.forEach(operation => applyCellState(operation.noteId, operation.step, operation.type !== 'remove'));
+  } finally { aiApplyingEdits = false; }
+  refreshAnalysisAfterEdit();
   sortComposition();
-  aiCoachFeedback = {
-    ...aiCoachFeedback,
-    applied: true
+  const afterKeys = new Set(composition.map(item => `${item.noteId}:${item.step}:${item.accidental || 0}`));
+  const changeSummary = {
+    added: [...afterKeys].filter(key => !beforeKeys.has(key)).length,
+    removed: [...beforeKeys].filter(key => !afterKeys.has(key)).length
   };
+  aiCoachFeedback = {...aiCoachFeedback, applied: true, changeSummary};
   render();
   renderAICoachResult();
+  setAIWorkStatus();
 }
 
 function sanitizeAIOperations(operations) {
@@ -3984,24 +3999,34 @@ async function analyzeWithAICoach() {
   aiCoachStatus = 'loading';
   aiCoachFeedback = null;
   window.soundiThought?.start();
+  setAIWorkStatus(currentLanguage === 'ko' ? '곡 확인 중…' : 'Checking your music…');
   renderAICoachResult();
   try {
     window.soundiThought?.step('read');
     const analysis = analyzeComposition();
     const payload = createCoachPayload(analysis);
     const localFeedback = createLocalCoachFeedback(payload);
+    const originalComposition = JSON.stringify(composition);
+    aiCoachFeedback = localFeedback;
+    renderAICoachResult();
     window.soundiThought?.step('local');
     try {
+      const staticHost = /^(www\.)?soundiofficial\.com$/.test(window.location.hostname) || window.location.hostname.endsWith('.github.io');
+      const endpoint = window.SOUNDI_AI_ENDPOINT || (staticHost ? null : '/api/analyze');
+      if (!endpoint) throw new Error('Static hosting: local analysis');
       window.soundiThought?.step('request');
-      const response = await fetch('/api/analyze', {
+      setAIWorkStatus(currentLanguage === 'ko' ? '수정안 준비됨 · 설명 기다리는 중…' : 'Edits ready · waiting for feedback…');
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(6000)
       });
       if (!response.ok) throw new Error('AI server unavailable');
       const data = await response.json();
       window.soundiThought?.step('received');
       const llmFeedback = data.feedback || {};
+      if (aiCoachFeedback !== localFeedback || JSON.stringify(composition) !== originalComposition) return;
       aiCoachFeedback = {
         ...localFeedback,
         summary: llmFeedback.summary || localFeedback.summary,
@@ -4009,18 +4034,19 @@ async function analyzeWithAICoach() {
         source: 'llm'
       };
     } catch (error) {
-      aiCoachFeedback = localFeedback;
+      if (aiCoachFeedback === localFeedback) aiCoachFeedback = localFeedback;
       window.soundiThought?.step('fallbackStep');
     }
     aiCoachStatus = 'ready';
     aiAnalyzeLockedUntilEdit = true;
     window.soundiThought?.step('complete');
-    window.soundiThought?.finish(aiCoachFeedback.source === 'llm' ? 'done' : 'fallback');
   } catch (error) {
     aiCoachStatus = 'idle';
-    window.soundiThought?.finish('error');
     if (aiFormMessage) aiFormMessage.textContent = currentLanguage === 'ko' ? '분석을 완료하지 못했어요. 다시 시도해주세요.' : 'Could not finish the analysis. Please try again.';
   } finally {
+    aiCoachStatus = aiCoachFeedback ? 'ready' : 'idle';
+    window.soundiThought?.finish(!aiCoachFeedback ? 'error' : aiCoachFeedback.source === 'llm' ? 'done' : 'fallback');
+    setAIWorkStatus();
     renderAICoachResult();
   }
 }

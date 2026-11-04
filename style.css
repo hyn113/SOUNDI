@@ -9542,3 +9542,9 @@ button, input, select, textarea { font-family: "SUIT", sans-serif; }
 .esp32-controls details summary { cursor: pointer; }
 .esp32-controls details p { margin-top: 10px; }
 .haptic-connect-popover { max-height: min(680px, 75vh); overflow-y: auto; }
+
+.ai-work-cursor { position:fixed;z-index:10000;pointer-events:none;padding:9px 13px;border:1px solid var(--hairline,#ddd);border-radius:18px;background:var(--paper,#fff);color:var(--ink,#222);box-shadow:0 3px 14px #0000000c;font-family:inherit;font-size:12px;line-height:1.4;max-width:290px;white-space:normal; }
+.ai-work-cursor[hidden] { display:none; }
+@media (pointer:coarse) { .ai-work-cursor { display:none; } }
+
+.ai-change-summary,.ai-feedback-ready {font-size:12px;line-height:1.7;padding:10px 12px;border:1px solid var(--hairline,#ddd);border-radius:8px;color:var(--ink,#222);}
