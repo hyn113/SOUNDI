@@ -265,7 +265,7 @@
     padding: max(6px, env(safe-area-inset-top)) 56px 6px;
   }
   .compose-view.is-playing .analysis-tab { min-width: 0; }
-  .compose-view.is-playing .analysis-tab.is-active { text-decoration: underline; text-underline-offset: 7px; }
+  .compose-view.is-playing .analysis-tab.is-active { text-decoration: none; }
   .compose-view.is-playing .analysis-pages { min-height: 0; }
   .compose-view.is-playing .mobile-feedback-close {
     display: grid; place-items: center; position: absolute; right: 8px;
