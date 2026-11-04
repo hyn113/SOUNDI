@@ -4538,7 +4538,9 @@ function mapSongRow(row) {
   };
 }
 
+let archiveRequestVersion = 0;
 async function loadSharedArchive() {
+  const requestVersion = ++archiveRequestVersion;
   if (!supabaseClient) {
     renderArchive();
     return;
@@ -4556,9 +4558,41 @@ async function loadSharedArchive() {
     return;
   }
 
-  archiveItems = (data || []).map(mapSongRow);
+  if (requestVersion !== archiveRequestVersion) return;
+  const nextItems = (data || []).map(mapSongRow);
+  if (JSON.stringify(nextItems) === JSON.stringify(archiveItems)) return;
+  archiveItems = nextItems;
   persistArchive();
   renderArchive();
+}
+
+function startSharedArchiveSync() {
+  if (!supabaseClient) return;
+  let refreshing = false, queued = false, timer;
+  async function refresh() {
+    if (document.hidden) return;
+    if (refreshing) { queued = true; return; }
+    refreshing = true;
+    try { await loadSharedArchive(); }
+    finally {
+      refreshing = false;
+      if (queued) { queued = false; void refresh(); }
+    }
+  }
+  function schedule() {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => { void refresh(); }, 150);
+  }
+  const channel = supabaseClient.channel('soundi-shared-archive')
+    .on('postgres_changes', {event:'*', schema:'public', table:'songs'}, schedule)
+    .subscribe();
+  const poll = window.setInterval(() => { void refresh(); }, 5000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) schedule(); });
+  window.addEventListener('online', schedule);
+  window.addEventListener('pagehide', () => {
+    window.clearInterval(poll);window.clearTimeout(timer);
+    void supabaseClient.removeChannel(channel);
+  }, {once:true});
 }
 
 function persistArchive() {
@@ -5212,42 +5246,49 @@ async function saveComposition(cover = draftCover, { silentSaveFeedback = false 
 }
 
 async function publishCurrentComposition() {
-  if (!composition.length || currentUser?.role !== 'general') return;
-
-  if (!currentSongId) return;
-  if (!currentSongId || !supabaseClient) return;
-
+  if (!composition.length || currentUser?.role !== 'general' || !currentUserId || !supabaseClient) return false;
   const now = new Date().toISOString();
-  const { data, error } = await supabaseClient
-    .from('songs')
-    .update({
-      status: 'published',
-      published_at: now,
-      updated_at: now
-    })
-    .eq('id', currentSongId)
-    .eq('owner_id', currentUserId)
-    .select('id,title,author,owner_id,status,published_at,step_count,cover,composition,created_at,updated_at')
-    .single();
-
-  if (error || !data) {
+  const payload = {
+    title: getCurrentTitle(), author: currentUser.nickname, owner_id: currentUserId,
+    status: 'published', published_at: now, updated_at: now,
+    step_count: Math.max(32, ...composition.map(item => item.step + 1)),
+    cover: normalizeCover(draftCover), composition: composition.map(item => ({...item}))
+  };
+  try {
+    const table = supabaseClient.from('songs');
+    const query = currentSongId
+      ? table.update(payload).eq('id', currentSongId).eq('owner_id', currentUserId)
+      : table.insert(payload);
+    const { data, error } = await query
+      .select('id,title,author,owner_id,status,published_at,step_count,cover,composition,created_at,updated_at')
+      .single();
+    if (error || !data) throw error || new Error('게시 결과를 확인하지 못했어요.');
+    currentSongId = data.id;
+    archiveRequestVersion++;
+    const publishedItem = mapSongRow(data);
+    archiveItems = archiveItems.filter(item => String(item.id) !== String(publishedItem.id));
+    archiveItems.unshift(publishedItem);
+    mySongItems = mySongItems.filter(item => String(item.id) !== String(publishedItem.id));
+    mySongItems.unshift(publishedItem);
+    isPublishedLocked = true;
+    document.body.classList.add('is-published-locked-mode');
+    persistArchive();
+    renderArchive();
+    mySongsFilter = 'published';
+    renderMySongs();
+    syncControlButtons();
+    updateTitleDisplay();
+    syncComposePublishButton();
+    return true;
+  } catch (error) {
     console.warn('[Soundi] 게시 실패', error);
-    return;
+    const reason = error?.code === '42501' || error?.code === 'PGRST301'
+      ? '로그인 상태 또는 게시 권한을 확인해주세요.'
+      : error?.code === '23514' ? '제목은 120자, 닉네임은 20자 이내인지 확인해주세요.'
+      : '네트워크 연결을 확인한 후 다시 시도해주세요.';
+    showSongDialog(`곡을 게시하지 못했어요. ${reason}${error?.code ? ' (' + error.code + ')' : ''}`);
+    return false;
   }
-
-  const publishedItem = mapSongRow(data);
-  archiveItems = archiveItems.filter((item) => String(item.id) !== String(publishedItem.id));
-  archiveItems.unshift(publishedItem);
-  isPublishedLocked = true;
-  document.body.classList.add('is-published-locked-mode');
-  persistArchive();
-  renderArchive();
-  mySongsFilter = 'published';
-  await loadMySongs();
-  syncControlButtons();
-  updateTitleDisplay();
-  renderMySongs();
-  syncComposePublishButton();
 }
 
 function openArchivePreview(id, inArchive = false) {
@@ -5558,19 +5599,22 @@ function renderCoverPreview() {
   coverPreviewRecord.innerHTML = renderArchiveRecordContent(previewItem);
 }
 
+let compositionPublishPending = false;
 async function publishCoverComposition() {
-  if (coverTitleInput) {
-    compositionTitle = coverTitleInput.value.trim() || 'Untitled';
-    updateTitleDisplay();
+  if (compositionPublishPending) return;
+  compositionPublishPending = true;
+  if (publishCoverButton) publishCoverButton.disabled = true;
+  try {
+    if (coverTitleInput) {
+      compositionTitle = coverTitleInput.value.trim() || 'Untitled';
+      updateTitleDisplay();
+    }
+    draftCover = normalizeCover(draftCover);
+    if (await publishCurrentComposition()) closeCoverModal();
+  } finally {
+    compositionPublishPending = false;
+    if (publishCoverButton) publishCoverButton.disabled = false;
   }
-
-  draftCover = normalizeCover(draftCover);
-
-  const saved = await saveComposition(draftCover, { silentSaveFeedback: true });
-  if (!saved && !currentSongId) return;
-
-  await publishCurrentComposition();
-  closeCoverModal();
 }
 
 function handleCoverImageInput(event) {
@@ -6901,6 +6945,7 @@ setComposeZoom(1, false);
 render();
 renderArchive();
 loadSharedArchive();
+startSharedArchiveSync();
 renderLessonRhythmGrid();
 startLessonMoodLoop();
 setView(viewNames.includes(persistedSessionState.view) ? persistedSessionState.view : 'home');
