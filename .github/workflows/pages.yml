@@ -23,7 +23,9 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir _site
-          rsync -a --exclude='.git' --exclude='.github' --exclude='_site' --exclude='node_modules' --exclude='test' --exclude='server.js' --exclude='supabase' --exclude='*.sql' ./ _site/
+          rsync -a --exclude='.git' --exclude='.github' --exclude='_site' --exclude='node_modules' --exclude='test' --exclude='server.js' --exclude='/supabase/' --exclude='*.sql' ./ _site/
+      - name: Verify packaged assets
+        run: python3 scripts/verify-static-site.py _site
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
