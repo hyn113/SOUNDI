@@ -9575,3 +9575,27 @@ button, input, select, textarea { font-family: "SUIT", sans-serif; }
   pointer-events: none;
 }
 .save-confirmation[hidden] { display: none; }
+
+/* Keep score lines as a dedicated tile; do not couple them to gradient stop parsing. */
+.score-grid {
+  background-color: #fff;
+  background-image:
+    linear-gradient(to bottom, transparent var(--reference-top, 0px),
+      rgba(12, 12, 12, .018) var(--reference-top, 0px),
+      rgba(12, 12, 12, .018) var(--reference-bottom, 0px),
+      transparent var(--reference-bottom, 0px)),
+    url("vendor/soundi/compose-grid-light.svg");
+  background-size: 100% 100%, calc(var(--compose-cell) * 4) calc(var(--compose-cell) * 7);
+  background-repeat: no-repeat, repeat;
+}
+html[data-theme="dark"] .score-grid {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(to bottom, transparent var(--reference-top, 0px),
+      rgba(255, 255, 255, .055) var(--reference-top, 0px),
+      rgba(255, 255, 255, .055) var(--reference-bottom, 0px),
+      transparent var(--reference-bottom, 0px)),
+    url("vendor/soundi/compose-grid-dark.svg");
+  background-size: 100% 100%, calc(var(--compose-cell) * 4) calc(var(--compose-cell) * 7);
+  background-repeat: no-repeat, repeat;
+}
