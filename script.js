@@ -5257,7 +5257,7 @@ function setMySongsFilter(filter) {
 }
 
 let saveConfirmationTimer = null;
-function showSaveConfirmation() {
+function showSaveConfirmation(message) {
   let notice = document.getElementById('saveConfirmation');
   if (!notice) {
     notice = document.createElement('div');
@@ -5268,7 +5268,7 @@ function showSaveConfirmation() {
     document.body.appendChild(notice);
   }
   window.clearTimeout(saveConfirmationTimer);
-  notice.textContent = currentLanguage === 'ko' ? '저장이 완료됐어요.' : 'Your song has been saved.';
+  notice.textContent = message || (currentLanguage === 'ko' ? '저장이 완료됐어요.' : 'Your song has been saved.');
   notice.hidden = false;
   saveConfirmationTimer = window.setTimeout(() => { notice.hidden = true; }, 2600);
 }
@@ -6894,7 +6894,8 @@ publishedSongsTab?.addEventListener('click', () => setMySongsFilter('published')
 clearButton.addEventListener('click', () => {
   if (isArchivePreviewMode || isPublishedLocked) return;
   if (!composition.length) return;
-  runDeleteChip(() => { clearComposition(); return true; });
+  clearComposition();
+  showSaveConfirmation(currentLanguage === 'ko' ? '삭제 되었어요.' : 'Deleted.');
 });
 exampleName?.addEventListener('click', beginTitleEdit);
 exampleName?.addEventListener('blur', commitTitleEdit);
