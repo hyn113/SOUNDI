@@ -5963,7 +5963,7 @@ function applyLanguage(nextLanguage = currentLanguage) {
   if (languageToggle) {
     const isKorean = currentLanguage === 'ko';
     const currentText = isKorean ? '한글' : 'ENG';
-    const nextText = isKorean ? '영어' : 'KOR';
+    const nextText = isKorean ? 'ENG' : '한글';
     languageToggle.classList.toggle('is-korean-labels', isKorean);
     languageToggle.querySelector('.language-current')?.replaceChildren(document.createTextNode(currentText));
     languageToggle.querySelector('.language-next')?.replaceChildren(document.createTextNode(nextText));
@@ -6999,14 +6999,11 @@ document.querySelectorAll('[data-language]').forEach(button => {
 });
 languageToggle?.addEventListener('click', () => {
   const nextLanguage = currentLanguage === 'ko' ? 'en' : 'ko';
+  languageToggle.classList.add('is-language-settled');
   applyLanguage(nextLanguage);
-
-  languageToggle.classList.remove('is-switching');
-  void languageToggle.offsetWidth;
-  languageToggle.classList.add('is-switching');
-  window.setTimeout(() => {
-    languageToggle.classList.remove('is-switching');
-  }, 520);
+});
+['pointerleave', 'blur'].forEach(eventName => {
+  languageToggle?.addEventListener(eventName, () => languageToggle.classList.remove('is-language-settled'));
 });
 document.querySelectorAll('button[data-theme-preference]').forEach((button) => {
   button.addEventListener('click', () => {

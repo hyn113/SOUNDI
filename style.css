@@ -9599,3 +9599,8 @@ html[data-theme="dark"] .score-grid {
   background-size: 100% 100%, calc(var(--compose-cell) * 4) calc(var(--compose-cell) * 7);
   background-repeat: no-repeat, repeat;
 }
+
+/* The clipped label window stays 18px inside larger touch targets. */
+.language-toggle { display: inline-flex; align-items: center; justify-content: center; }
+.language-window { display: block; height: 18px; overflow: hidden; }
+.language-toggle.is-language-settled .language-rail { transform: translateY(0); transition: none; }

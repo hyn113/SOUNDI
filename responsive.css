@@ -136,10 +136,10 @@
 }
 
 @media (width < 1024px) {
-  /* Keep one language label inside the larger touch target. */
-  .language-toggle .language-rail { display: block; transform: none; }
-  .language-current { height: 44px; line-height: 44px; }
-  .language-next { display: none; }
+  /* Keep the rolling labels inside an 18px window within the touch target. */
+  .language-toggle .language-rail { display: grid; }
+  .language-current { height: 18px; line-height: 18px; }
+  .language-next { display: block; }
 }
 @media (width < 768px) {
   .compose-view.is-playing .score-quick-actions { flex-direction: row; align-items: center; }
@@ -343,9 +343,9 @@
   .site-header .nav { gap: clamp(16px, 2.5vw, 28px); }
   .site-header .nav-button { min-height: 44px; }
   .site-header .language-toggle { width: 44px; height: 44px; min-height: 44px; }
-  .site-header .language-rail { display: block; transform: none; }
-  .site-header .language-current { height: 44px; line-height: 44px; text-align: center; }
-  .site-header .language-next { display: none; }
+  .site-header .language-rail { display: grid; }
+  .site-header .language-current { height: 18px; line-height: 18px; text-align: center; }
+  .site-header .language-next { display: block; }
 }
 
 /* Keep account actions and page links in one ordered compact menu. */
