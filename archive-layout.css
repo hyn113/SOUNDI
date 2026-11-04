@@ -33,6 +33,7 @@
     padding: 84px clamp(32px, 5vw, 100px) 32px;
   }
   #archiveView[data-player-layout="split"] .archive-player.has-song {
+    align-self: center;
     position: relative; top: 0; inset-inline: auto; bottom: auto;
     transform: none; width: 100%; min-width: 0; margin: 0; padding: 0;
     flex-direction: column; gap: clamp(24px, 4vh, 48px); overflow: visible;
@@ -63,7 +64,7 @@
   #archiveView[data-player-layout="split"]:has(.archive-player.has-song) .archive-card { width: 100%; max-width: none; min-width: 0; }
 }
 
-/* Center the record itself in the left pane, with transport beneath it. */
+/* Center the complete player (record, title and transport) in the left pane. */
 @media (min-width: 768px) and (hover: hover) and (pointer: fine), (min-width: 768px) and (orientation: landscape) {
   #archiveView.is-active[data-player-layout="split"]:has(.archive-player.has-song) {
     padding-block: 32px;
@@ -71,20 +72,18 @@
   #archiveView[data-player-layout="split"] .archive-player.has-song {
     align-self: stretch;
     height: 100%;
-    display: grid;
-    grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
-    justify-items: center;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    row-gap: 20px;
+    gap: 24px;
   }
   #archiveView[data-player-layout="split"] .archive-turntable {
-    grid-row: 2;
     margin: 0;
     width: min(90%, 432px, calc((100dvh - 440px) * 0.9));
   }
   #archiveView[data-player-layout="split"] .archive-player-body {
-    grid-row: 3;
-    align-self: start;
     min-height: 0;
   }
 }
