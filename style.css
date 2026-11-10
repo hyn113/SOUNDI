@@ -9625,6 +9625,9 @@ html[data-theme="dark"] .score-grid {
 html[data-private-composer] :is(.nav-button[data-view="archive"], #composePublishButton, #publishedSongsTab, #adminLoginButton) {
   display: none !important;
 }
+html[data-private-composer] #loginModal #adminLoginButton {
+  display: none !important;
+}
 html[data-private-composer] .mobile-bottom-nav {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
