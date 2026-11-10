@@ -1,5 +1,7 @@
 let STEP_COUNT = 64;
 const STORAGE_KEY = 'soundi-v9-archive';
+const privateComposer = window.__soundiPrivateComposer === true;
+if (privateComposer) document.documentElement.dataset.privateComposer = 'true';
 const SUPABASE_URL = 'https://xbkpqoeetjipjirslteq.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_XXiTr1iiq6HlZIvqXOqS1A_MHpTzf9u';
 const supabaseClient = window.supabase?.createClient
@@ -7,7 +9,8 @@ const supabaseClient = window.supabase?.createClient
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true
+        detectSessionInUrl: true,
+        flowType: privateComposer ? 'pkce' : 'implicit'
       }
     })
   : null;
@@ -835,6 +838,7 @@ function setLoginRole(role) {
 }
 
 async function submitLogin() {
+  if (privateComposer) return;
   if (selectedLoginRole !== 'admin') return;
 
   const inputValue = String(nicknameInput?.value || '').trim();
@@ -907,19 +911,31 @@ async function signInWithGoogle() {
 
   if (loginMessage) loginMessage.textContent = '';
 
-  const redirectTo = `${window.location.origin}${window.location.pathname}`;
-  const { error } = await supabaseClient.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo,
-        queryParams: {
-          prompt: 'select_account'
-        }
-      }
-  });
-
-  if (error) {
-    console.error('[Soundi Auth] Google login failed', error);
-    if (loginMessage) loginMessage.textContent = 'Google 로그인을 시작하지 못했어요.';
+  if (googleLoginButton?.disabled) return;
+  if (googleLoginButton) googleLoginButton.disabled = true;
+  const redirectTo = privateComposer
+    ? 'com.soundi.SoundiHaptics://oauth/callback'
+    : `${window.location.origin}${window.location.pathname}`;
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo, skipBrowserRedirect: privateComposer, queryParams: { prompt: 'select_account' } }
+    });
+    if (error) throw error;
+    if (privateComposer) {
+      const result = await appleAuthBridge.postMessage({ operation: 'authorizeGoogle', url: data.url });
+      if (result?.cancelled) return;
+      if (!result?.code) throw new Error('Google sign-in did not return an authorization code');
+      const { error: exchangeError } = await supabaseClient.auth.exchangeCodeForSession(result.code);
+      if (exchangeError) throw exchangeError;
+    }
+  } catch (error) {
+    console.warn('[Soundi Auth] Google login did not complete');
+    if (loginMessage) loginMessage.textContent = currentLanguage === 'en'
+      ? 'Could not complete Google sign-in. Please try again.'
+      : 'Google 로그인을 완료하지 못했어요. 다시 시도해 주세요.';
+  } finally {
+    if (googleLoginButton) googleLoginButton.disabled = false;
   }
 }
 
@@ -992,7 +1008,7 @@ async function initializeAuthSession() {
   if (await applySupabaseUserSession(session) || isGuest || currentUser) return;
 
   const saved = loadUserSession();
-  if (saved?.role === 'admin' && saved.adminToken) {
+  if (!privateComposer && saved?.role === 'admin' && saved.adminToken) {
     currentUser = saved;
     currentUserId = 'admin';
     updateUserStatus();
@@ -4157,7 +4173,7 @@ async function analyzeWithAICoach() {
     window.soundiThought?.step('local');
     try {
       const staticHost = /^(www\.)?soundiofficial\.com$/.test(window.location.hostname) || window.location.hostname.endsWith('.github.io');
-      const endpoint = window.SOUNDI_AI_ENDPOINT || (staticHost ? null : '/api/analyze');
+      const endpoint = privateComposer ? null : window.SOUNDI_AI_ENDPOINT || (staticHost ? null : '/api/analyze');
       if (!endpoint) throw new Error('Static hosting: local analysis');
       window.soundiThought?.step('request');
       setAIWorkStatus(currentLanguage === 'ko' ? '수정안 준비됨 · 설명 기다리는 중…' : 'Edits ready · waiting for feedback…');
@@ -4686,6 +4702,7 @@ function clearComposition() {
 }
 
 function loadArchive() {
+  if (privateComposer) return [];
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
   } catch {
@@ -4711,6 +4728,7 @@ function mapSongRow(row) {
 
 let archiveRequestVersion = 0;
 async function loadSharedArchive() {
+  if (privateComposer) return;
   const requestVersion = ++archiveRequestVersion;
   if (!supabaseClient) {
     renderArchive();
@@ -4738,7 +4756,7 @@ async function loadSharedArchive() {
 }
 
 function startSharedArchiveSync() {
-  if (!supabaseClient) return;
+  if (privateComposer || !supabaseClient) return;
   let refreshing = false, queued = false, timer;
   async function refresh() {
     if (document.hidden) return;
@@ -4787,12 +4805,15 @@ async function loadMySongs() {
     return;
   }
 
-  const { data, error } = await supabaseClient
+  const ownerId = currentUserId;
+  let query = supabaseClient
     .from('songs')
     .select('id,title,author,owner_id,status,published_at,step_count,cover,composition,created_at,updated_at')
-    .eq('owner_id', currentUserId)
-    .neq('status', 'deleted')
-    .order('updated_at', { ascending: false });
+    .eq('owner_id', ownerId)
+    .neq('status', 'deleted');
+  if (privateComposer) query = query.neq('status', 'published');
+  const { data, error } = await query.order('updated_at', { ascending: false });
+  if (currentUserId !== ownerId) return;
 
   if (error) {
     console.warn('[Soundi My Songs] 불러오기 실패', error);
@@ -5044,7 +5065,7 @@ function syncComposePublishButton() {
   if (!composePublishButton) return;
   const current = mySongItems.find((item) => String(item.id) === String(currentSongId));
   const isPublished = current?.status === 'published' || isPublishedLocked;
-  const canShow = composition.length > 0 && !isArchivePreviewMode && !isExampleMode;
+  const canShow = !privateComposer && composition.length > 0 && !isArchivePreviewMode && !isExampleMode;
   composePublishButton.hidden = !canShow;
   composePublishButton.textContent = isPublished ? translate('publishedStatus') : translate('publish');
   composePublishButton.disabled = isPublished;
@@ -5441,6 +5462,7 @@ async function saveComposition(cover = draftCover, { silentSaveFeedback = false 
 }
 
 async function publishCurrentComposition() {
+  if (privateComposer) return false;
   if (!composition.length || currentUser?.role !== 'general' || !currentUserId || !supabaseClient) return false;
   const now = new Date().toISOString();
   const payload = {
@@ -6127,7 +6149,9 @@ function retreatLesson() {
 }
 
 function setView(viewName) {
-  const nextView = viewNames.includes(viewName) ? viewName : 'home';
+  const nextView = privateComposer && viewName === 'archive'
+    ? 'compose'
+    : viewNames.includes(viewName) ? viewName : 'home';
   if (isArchivePreviewMode && (archivePlayerActive ? nextView !== 'archive' : nextView !== 'compose')) {
     restoreArchivePreviewDraft();
   }

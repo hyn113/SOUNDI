@@ -9620,3 +9620,20 @@ html[data-theme="dark"] .score-grid {
 #loginModal .guest-login-button:hover { text-decoration: underline; }
 #loginModal .guest-login-button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .user-menu-action[hidden] { display: none !important; }
+
+/* The iOS composer supports private compositions and on-device examples. */
+html[data-private-composer] :is(.nav-button[data-view="archive"], #composePublishButton, #publishedSongsTab, #adminLoginButton) {
+  display: none !important;
+}
+html[data-private-composer] .mobile-bottom-nav {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#loginModal .login-privacy-link {
+  color: var(--ink, #171717);
+  font-size: 12px;
+  padding: 10px 8px;
+}
+html[lang="en"] :is(.login-privacy-link, .user-menu-action) > [lang="ko"],
+html:not([lang="en"]) :is(.login-privacy-link, .user-menu-action) > [lang="en"] {
+  display: none;
+}
