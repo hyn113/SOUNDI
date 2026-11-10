@@ -307,6 +307,9 @@ let visualCaptionTimer = null;
 let lastVisualCaptionText = '';
 let selectedLoginRole = 'general';
 let currentUser = null;
+let isGuest = false;
+const GUEST_DRAFT_KEY = 'soundi:guest-draft';
+const appleAuthBridge = window.webkit?.messageHandlers?.soundiAppleAuth;
 let currentUserId = null;
 let currentSongId = null;
 let mySongItems = [];
@@ -523,7 +526,7 @@ const translations = {
     pairingInvalid: '6자리 연결 코드를 입력해주세요.', pairingConnecting: 'iPhone에 연결하고 있어요…',
     pairingConnected: 'iPhone과 연결했어요.', pairingFailed: '연결하지 못했어요. IP와 같은 Wi-Fi를 확인해주세요.',
     middle: '중간', dashboardSubtitle: 'SOUNDI의 이용 현황을 한눈에 확인하세요.',
-    loginDescription: 'Google 계정으로 간편하게 시작하세요.', continueGoogle: 'Google로 계속하기', admin: '관리자',
+    loginDescription: 'Google 계정으로 간편하게 시작하세요.', continueGoogle: 'Google로 계속하기', continueGuest: '게스트로 둘러보기', guestSignInRequired: '이 기능을 사용하려면 로그인해 주세요.', guestDraftSaved: '이 기기에 곡을 저장했어요.', guestDraftSaveFailed: '이 기기에 곡을 저장하지 못했어요.', admin: '관리자',
     adminLogin: '관리자 로그인', adminPassword: '관리자 비밀번호', passwordPlaceholder: '비밀번호 입력', login: '로그인', scrollHint: '아래로<br />스크롤해 주세요'
   },
   en: {
@@ -597,7 +600,7 @@ const translations = {
     pairingInvalid: 'Enter the 6-digit connection code.', pairingConnecting: 'Connecting to your iPhone…',
     pairingConnected: 'Connected to your iPhone.', pairingFailed: 'Could not connect. Check the IP address and Wi-Fi network.',
     middle: 'Middle', dashboardSubtitle: 'See SOUNDI usage at a glance.',
-    loginDescription: 'Get started with your Google account.', continueGoogle: 'Continue with Google', admin: 'Administrator',
+    loginDescription: 'Get started with your Google account.', continueGoogle: 'Continue with Google', continueGuest: 'Explore as a guest', guestSignInRequired: 'Sign in to use this feature.', guestDraftSaved: 'Song saved on this device.', guestDraftSaveFailed: 'Could not save the song on this device.', admin: 'Administrator',
     adminLogin: 'Administrator login', adminPassword: 'Administrator password', passwordPlaceholder: 'Enter password', login: 'Log in', scrollHint: 'please<br />scroll'
   }
 };
@@ -738,12 +741,16 @@ function saveUserSession(user) {
 function updateUserStatus() {
   const adminTests = document.getElementById('hapticAdminTests');
   if (adminTests) adminTests.hidden = currentUser?.role !== 'admin';
-  if (!currentUser) return;
-  if (userStatusArea) userStatusArea.hidden = false;
-  if (userStatusName) userStatusName.textContent = currentUser.nickname;
-  if (userMenuName) userMenuName.textContent = currentUser.nickname;
+  if (userStatusArea) userStatusArea.hidden = !currentUser && !isGuest;
+  if (dashboardButton) dashboardButton.hidden = isGuest;
+  if (logoutButton) logoutButton.hidden = isGuest;
+  const guestSignInButton = document.getElementById('guestSignInButton');
+  if (guestSignInButton) guestSignInButton.hidden = !isGuest;
+  const nickname = isGuest ? translate('guest') : currentUser?.nickname || '';
+  if (userStatusName) userStatusName.textContent = nickname;
+  if (userMenuName) userMenuName.textContent = nickname;
   if (userMenuRole) {
-    userMenuRole.textContent = currentUser.role === 'admin' ? translate('roleAdmin') : translate('roleGeneral');
+    userMenuRole.textContent = isGuest ? '' : translate(currentUser?.role === 'admin' ? 'roleAdmin' : 'roleGeneral');
   }
 }
 
@@ -758,12 +765,55 @@ function closeLoginModal() {
   }, 0);
 }
 
-function openLoginModal() {
+function openLoginModal(message = '') {
   if (!loginModal) return;
   loginModal.hidden = false;
   loginModal.setAttribute('aria-hidden', 'false');
   document.body.classList.add('is-login-open');
-  requestAnimationFrame(() => nicknameInput?.focus());
+  if (loginMessage) loginMessage.textContent = message;
+  requestAnimationFrame(() => googleLoginButton?.focus({ preventScroll: true }));
+}
+
+function enterGuestMode() {
+  if (currentUser) return;
+  if (!isGuest) {
+    isGuest = true;
+    restoreGuestDraft();
+  }
+  selectedLoginRole = 'general';
+  if (adminLoginPanel) adminLoginPanel.hidden = true;
+  updateUserStatus();
+  renderMySongs();
+  closeLoginModal();
+}
+
+function restoreGuestDraft() {
+  let draft;
+  try {
+    draft = JSON.parse(localStorage.getItem(GUEST_DRAFT_KEY));
+  } catch {
+    return;
+  }
+  if (!Array.isArray(draft?.composition) || composition.length || isArchivePreviewMode) return;
+  composition = draft.composition.filter(note => note && typeof note.noteId === 'string' && Number.isInteger(note.step));
+  compositionTitle = typeof draft.title === 'string' ? draft.title : 'Untitled';
+  STEP_COUNT = Math.max(64, Number(draft.stepCount) || 64);
+  ensureOctaveRangeForComposition();
+  updateTitleDisplay();
+  syncControlButtons();
+  render();
+  syncComposePublishButton();
+}
+
+function saveGuestDraft() {
+  try {
+    localStorage.setItem(GUEST_DRAFT_KEY, JSON.stringify({
+      composition, title: getCurrentTitle(), stepCount: STEP_COUNT
+    }));
+    showSaveConfirmation(translate('guestDraftSaved'));
+  } catch {
+    showSaveConfirmation(translate('guestDraftSaveFailed'));
+  }
 }
 
 function setLoginRole(role) {
@@ -827,6 +877,7 @@ async function submitLogin() {
     if (loginSubmitButton) loginSubmitButton.disabled = false;
   }
 
+  isGuest = false;
   currentUserId = 'admin';
   currentUser = {
     nickname: currentLanguage === 'en' ? 'Administrator' : '관리자',
@@ -872,6 +923,28 @@ async function signInWithGoogle() {
   }
 }
 
+if (appleAuthBridge && supabaseClient) {
+  document.getElementById('nativeAppleLoginSlot')?.removeAttribute('hidden');
+  window.soundiFinishAppleSignIn = async ({ identityToken, nonce, fullName }) => {
+    if (loginMessage) loginMessage.textContent = '';
+    try {
+      const { data, error } = await supabaseClient.auth.signInWithIdToken({
+        provider: 'apple', token: identityToken, nonce
+      });
+      if (error || !data.session) throw new Error('Apple sign-in failed');
+      if (fullName && !data.user?.user_metadata?.full_name) {
+        await supabaseClient.auth.updateUser({ data: { full_name: fullName } }).catch(() => {});
+      }
+      return true;
+    } catch {
+      if (loginMessage) loginMessage.textContent = currentLanguage === 'en'
+        ? 'Could not sign in with Apple. Please try again.'
+        : 'Apple로 로그인하지 못했어요. 다시 시도해 주세요.';
+      return false;
+    }
+  };
+}
+
 async function applySupabaseUserSession(session) {
   const authUser = session?.user;
   if (!authUser) return false;
@@ -883,12 +956,16 @@ async function applySupabaseUserSession(session) {
     'Soundi User'
   ).trim();
 
+  isGuest = false;
   currentUserId = authUser.id;
   currentUser = {
     nickname,
     role: 'general',
     userId: authUser.id,
-    email: authUser.email || ''
+    email: authUser.email || '',
+    usesAppleSignIn: authUser.app_metadata?.provider === 'apple' ||
+      authUser.app_metadata?.providers?.includes('apple') === true ||
+      authUser.identities?.some(identity => identity.provider === 'apple') === true
   };
 
   saveUserSession(currentUser);
@@ -912,7 +989,7 @@ async function initializeAuthSession() {
     console.warn('[Soundi Auth] Session restore failed', error);
   }
 
-  if (await applySupabaseUserSession(session)) return;
+  if (await applySupabaseUserSession(session) || isGuest || currentUser) return;
 
   const saved = loadUserSession();
   if (saved?.role === 'admin' && saved.adminToken) {
@@ -934,6 +1011,14 @@ async function initializeAuthSession() {
 }
 
 googleLoginButton?.addEventListener('click', signInWithGoogle);
+document.getElementById('guestLoginButton')?.addEventListener('click', enterGuestMode);
+document.getElementById('guestSignInButton')?.addEventListener('click', () => {
+  if (userMenu) userMenu.hidden = true;
+  if (themePicker) themePicker.hidden = true;
+  userStatusButton?.setAttribute('aria-expanded', 'false');
+  themeMenuButton?.setAttribute('aria-expanded', 'false');
+  openLoginModal();
+});
 adminLoginButton?.addEventListener('click', () => setLoginRole('admin'));
 loginSubmitButton?.addEventListener('click', submitLogin);
 
@@ -1784,7 +1869,7 @@ logoutButton?.addEventListener('click', async () => {
   currentUser = null;
   updateUserStatus();
   currentUserId = null;
-  currentSongId = null;
+  startNewSong();
   mySongItems = [];
   archivePreviewItemId = null;
   isArchivePreviewMode = false;
@@ -5244,6 +5329,10 @@ async function performDeleteMySongs(ids, {beforeRemove} = {}) {
 
 function toggleMySongsPanel() {
   if (!mySongsPanel || !mySongsToggle) return;
+  if (isGuest && mySongsPanel.classList.contains('is-collapsed')) {
+    openLoginModal(translate('guestSignInRequired'));
+    return;
+  }
   const willOpen = mySongsPanel.classList.contains('is-collapsed');
   mySongsPanel.classList.toggle('is-collapsed', !willOpen);
   mySongsToggle.setAttribute('aria-expanded', String(willOpen));
@@ -6875,6 +6964,10 @@ saveButton.addEventListener('click', async () => {
     flashControl(saveButton);
     return;
   }
+  if (isGuest) {
+    saveGuestDraft();
+    return;
+  }
   await saveComposition(draftCover);
 });
 coverCloseButton?.addEventListener('click', closeCoverModal);
@@ -6888,7 +6981,7 @@ publishCoverButton?.addEventListener('click', publishCoverComposition);
 composePublishButton?.addEventListener('click', () => {
   if (isArchivePreviewMode || !composition.length) return;
   if (currentUser?.role !== 'general') {
-    openLoginModal();
+    openLoginModal(isGuest ? translate('guestSignInRequired') : '');
     return;
   }
   openCoverModal();

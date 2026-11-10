@@ -37,9 +37,21 @@
     cancel.disabled = remove.disabled = true;
     progress.textContent = en() ? 'Deleting…' : '삭제 중…';
     try {
-      const { data, error } = await supabaseClient.functions.invoke('delete-account', {
-        body: { confirm: 'DELETE_MY_ACCOUNT' }
-      });
+      const body = { confirm: 'DELETE_MY_ACCOUNT' };
+      if (currentUser.usesAppleSignIn) {
+        if (!appleAuthBridge) {
+          progress.textContent = en() ? 'Open the SOUNDI iOS app to confirm deletion with Apple.'
+            : 'SOUNDI iOS 앱에서 Apple로 본인 확인을 완료해 주세요.';
+          return;
+        }
+        const authorization = await appleAuthBridge.postMessage({ operation: 'authorizeDeletion' });
+        if (!authorization?.authorizationCode || currentUserId !== deletingId) {
+          progress.textContent = en() ? 'Apple confirmation was not completed.' : 'Apple 본인 확인이 완료되지 않았어요.';
+          return;
+        }
+        body.appleAuthorizationCode = authorization.authorizationCode;
+      }
+      const { data, error } = await supabaseClient.functions.invoke('delete-account', { body });
       if (error || data?.deleted !== true) throw new Error('Deletion failed');
       stopComposeTimeTracking();
       await supabaseClient.auth.signOut({ scope: 'local' }).catch(() => {});

@@ -1,5 +1,5 @@
 // Authenticate on the server; never accept a user ID supplied by the caller.
-export function createDeleteAccountHandler(admin) {
+export function createDeleteAccountHandler(admin, revokeApple) {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
@@ -18,6 +18,15 @@ export function createDeleteAccountHandler(admin) {
       if (error || !data?.user) return reply(401, { error: 'Authentication required' });
       const body = await request.json().catch(() => ({}));
       if (body.confirm !== 'DELETE_MY_ACCOUNT') return reply(400, { error: 'Confirmation required' });
+      const appleIdentity = data.user.identities?.find(identity => identity.provider === 'apple');
+      if (appleIdentity || data.user.app_metadata?.provider === 'apple' ||
+          data.user.app_metadata?.providers?.includes('apple')) {
+        const code = body.appleAuthorizationCode;
+        if (typeof code !== 'string' || !code.trim() || code.length > 4096) {
+          return reply(400, { error: 'Apple reauthentication required' });
+        }
+        await revokeApple(code, appleIdentity?.identity_data?.sub);
+      }
       // A database trigger removes songs, profile and visits in this transaction.
       const deleted = await admin.auth.admin.deleteUser(data.user.id);
       if (deleted.error) return reply(500, { error: 'Account deletion failed. Please retry or contact support.' });
